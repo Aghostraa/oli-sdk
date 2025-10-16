@@ -1,0 +1,306 @@
+<!DOCTYPE HTML>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OLI SDK - Simple Test (Developer Experience)</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 900px;
+            margin: 40px auto;
+            padding: 20px;
+            background: #f8f9fa;
+        }
+        .card {
+            background: white;
+            padding: 24px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        h1 { color: #333; margin-top: 0; }
+        h2 { color: #555; border-bottom: 2px solid #eee; padding-bottom: 8px; }
+        .input-group {
+            display: flex;
+            gap: 10px;
+            margin: 15px 0;
+        }
+        input {
+            flex: 1;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        button {
+            padding: 10px 20px;
+            background: #0066cc;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        button:hover { background: #0052a3; }
+        button:disabled { background: #ccc; cursor: not-allowed; }
+        .result {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 4px;
+            margin: 10px 0;
+            font-family: monospace;
+        }
+        .success { background: #d4edda; color: #155724; padding: 12px; border-radius: 4px; }
+        .error { background: #f8d7da; color: #721c24; padding: 12px; border-radius: 4px; }
+        .loading { background: #fff3cd; color: #856404; padding: 12px; border-radius: 4px; }
+        code { background: #f4f4f4; padding: 2px 6px; border-radius: 3px; }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <h1>🏷️ OLI SDK - Developer Experience Test</h1>
+        <div id="status" class="loading">Initializing SDK...</div>
+    </div>
+
+    <div class="card">
+        <h2>🎯 Example 1: Simple Display Name (Easiest!)</h2>
+        <p>Just one method call to get a formatted name:</p>
+        <div class="input-group">
+            <input id="addr1" type="text" placeholder="Enter address" value="0x63F6e67F416A492826F1714a2EF40645fF4ce169" />
+            <button onclick="getSimpleName()">Get Name</button>
+        </div>
+        <div id="result1"></div>
+    </div>
+
+    <div class="card">
+        <h2>📋 Example 2: Address Summary (All info formatted)</h2>
+        <p>Get all label information in one object, formatted and ready to display:</p>
+        <div class="input-group">
+            <input id="addr2" type="text" placeholder="Enter address" value="0x63F6e67F416A492826F1714a2EF40645fF4ce169" />
+            <button onclick="getSummary()">Get Summary</button>
+        </div>
+        <div id="result2"></div>
+    </div>
+
+    <div class="card">
+        <h2>🏆 Example 3: Best Label (Auto-filtered)</h2>
+        <p>Get the best matching label based on your configuration:</p>
+        <div class="input-group">
+            <input id="addr3" type="text" placeholder="Enter address" value="0x63F6e67F416A492826F1714a2EF40645fF4ce169" />
+            <button onclick="getBestLabel()">Get Best Label</button>
+        </div>
+        <div id="result3"></div>
+    </div>
+
+    <div class="card">
+        <h2>📚 Example 4: All Valid Labels (Filtered & Ranked)</h2>
+        <p>Get all valid labels, automatically filtered and ranked:</p>
+        <div class="input-group">
+            <input id="addr4" type="text" placeholder="Enter address" value="0x63F6e67F416A492826F1714a2EF40645fF4ce169" />
+            <button onclick="getValidLabels()">Get All Valid Labels</button>
+        </div>
+        <div id="result4"></div>
+    </div>
+
+    <script type="module">
+        let oli;
+
+        async function init() {
+            try {
+                const { OLIClient, helpers } = await import('./dist/index.mjs');
+                window.helpers = helpers;
+                
+                // Initialize with configuration
+                oli = new OLIClient({
+                    network: 'BASE',
+                    
+                    // Configure trusted attesters
+                    attesters: {
+                        trustedAttesters: [
+                            '0xA725646c05e6Bb813d98C5aBB4E72DF4bcF00B56',
+                        ]
+                    },
+                    
+                    // Configure display preferences
+                    display: {
+                        nameFields: ['contract_name', 'address_name', 'erc20.name'],
+                        addressFormat: 'short',
+                        dateFormat: 'relative',
+                        showRevoked: false
+                    },
+                    
+                    // Configure filters
+                    filters: {
+                        allowedCategories: ['dex', 'bridge', 'nft_marketplace', 'defi', 'trading'],
+                    },
+                    
+                    // Enable auto-ranking
+                    autoRank: true
+                });
+
+                await oli.init();
+                window.oli = oli;
+                
+                document.getElementById('status').className = 'success';
+                document.getElementById('status').textContent = '✅ SDK initialized with custom configuration!';
+                
+            } catch (error) {
+                console.error('Init error:', error);
+                document.getElementById('status').className = 'error';
+                document.getElementById('status').innerHTML = `
+                    ❌ Failed: ${error.message}<br>
+                    <small>Build the SDK: <code>npm run build</code>, then serve: <code>npx serve .</code></small>
+                `;
+            }
+        }
+
+        window.getSimpleName = async function() {
+            const address = document.getElementById('addr1').value;
+            const resultDiv = document.getElementById('result1');
+            
+            if (!oli) {
+                resultDiv.innerHTML = '<div class="error">SDK not initialized</div>';
+                return;
+            }
+            
+            resultDiv.innerHTML = '<div class="loading">Loading...</div>';
+            
+            try {
+                // EASIEST METHOD - Just get a name!
+                const name = await oli.graphql.getDisplayName(address);
+                
+                resultDiv.innerHTML = `
+                    <div class="result">
+                        <strong>Display Name:</strong> ${name}<br><br>
+                        <strong>Code used:</strong><br>
+                        <code>const name = await oli.graphql.getDisplayName('${address}');</code>
+                    </div>
+                `;
+            } catch (error) {
+                resultDiv.innerHTML = `<div class="error">Error: ${error.message}</div>`;
+            }
+        };
+
+        window.getSummary = async function() {
+            const address = document.getElementById('addr2').value;
+            const resultDiv = document.getElementById('result2');
+            
+            if (!oli) {
+                resultDiv.innerHTML = '<div class="error">SDK not initialized</div>';
+                return;
+            }
+            
+            resultDiv.innerHTML = '<div class="loading">Loading...</div>';
+            
+            try {
+                // Get formatted summary
+                const summary = await oli.graphql.getAddressSummary(address);
+                
+                if (!summary) {
+                    resultDiv.innerHTML = '<div class="result">No label found</div>';
+                    return;
+                }
+                
+                resultDiv.innerHTML = `
+                    <div class="result">
+                        <strong>Name:</strong> ${summary.name}<br>
+                        <strong>Address:</strong> ${summary.formattedAddress}<br>
+                        <strong>Category:</strong> ${summary.category || 'N/A'}<br>
+                        <strong>Project:</strong> ${summary.project || 'N/A'}<br>
+                        <strong>Attester:</strong> ${summary.formattedAttester}<br>
+                        <strong>Created:</strong> ${summary.formattedDate}<br>
+                        <strong>Valid:</strong> ${summary.isValid ? '✅' : '❌'}<br>
+                        <strong>Revoked:</strong> ${summary.isRevoked ? '❌' : '✅'}<br><br>
+                        <strong>All Fields:</strong><br>
+                        <pre>${JSON.stringify(summary.fields, null, 2)}</pre>
+                    </div>
+                `;
+            } catch (error) {
+                resultDiv.innerHTML = `<div class="error">Error: ${error.message}</div>`;
+            }
+        };
+
+        window.getBestLabel = async function() {
+            const address = document.getElementById('addr3').value;
+            const resultDiv = document.getElementById('result3');
+            
+            if (!oli) {
+                resultDiv.innerHTML = '<div class="error">SDK not initialized</div>';
+                return;
+            }
+            
+            resultDiv.innerHTML = '<div class="loading">Loading...</div>';
+            
+            try {
+                // Get best label (automatically filtered and ranked)
+                const label = await oli.graphql.getBestLabelForAddress(address);
+                
+                if (!label) {
+                    resultDiv.innerHTML = '<div class="result">No matching label found (may be filtered by configuration)</div>';
+                    return;
+                }
+                
+                resultDiv.innerHTML = `
+                    <div class="result">
+                        <strong>Name:</strong> ${window.helpers.getDisplayName(label, oli.displayConfig)}<br>
+                        <strong>Category:</strong> ${label.usage_category || 'N/A'}<br>
+                        <strong>Project:</strong> ${label.owner_project || 'N/A'}<br>
+                        <strong>Attester:</strong> ${window.helpers.formatAddress(label.attester, 'short')}<br>
+                        <strong>Created:</strong> ${window.helpers.formatTimestamp(label.timeCreated, 'relative')}<br>
+                        <strong>Valid:</strong> ${window.helpers.isLabelValid(label) ? '✅' : '❌'}<br>
+                        <strong>Trusted Attester:</strong> ${window.helpers.isAttesterTrusted(label.attester, oli.attesterConfig) ? '✅' : '❌'}<br>
+                    </div>
+                `;
+            } catch (error) {
+                resultDiv.innerHTML = `<div class="error">Error: ${error.message}</div>`;
+            }
+        };
+
+        window.getValidLabels = async function() {
+            const address = document.getElementById('addr4').value;
+            const resultDiv = document.getElementById('result4');
+            
+            if (!oli) {
+                resultDiv.innerHTML = '<div class="error">SDK not initialized</div>';
+                return;
+            }
+            
+            resultDiv.innerHTML = '<div class="loading">Loading...</div>';
+            
+            try {
+                // Get all valid labels (filtered, ranked, sorted)
+                const labels = await oli.graphql.getValidLabelsForAddress(address);
+                
+                if (labels.length === 0) {
+                    resultDiv.innerHTML = '<div class="result">No valid labels found (may be filtered by configuration)</div>';
+                    return;
+                }
+                
+                const labelsHtml = labels.map((label, idx) => `
+                    <div style="padding: 10px; background: white; border-radius: 4px; margin: 5px 0;">
+                        <strong>${idx + 1}. ${window.helpers.getDisplayName(label, oli.displayConfig)}</strong><br>
+                        Category: ${label.usage_category || 'N/A'} • 
+                        Project: ${label.owner_project || 'N/A'}<br>
+                        Created: ${window.helpers.formatTimestamp(label.timeCreated, 'relative')} • 
+                        Valid: ${window.helpers.isLabelValid(label) ? '✅' : '❌'}
+                    </div>
+                `).join('');
+                
+                resultDiv.innerHTML = `
+                    <div class="result">
+                        <strong>Found ${labels.length} valid label(s):</strong><br><br>
+                        ${labelsHtml}
+                    </div>
+                `;
+            } catch (error) {
+                resultDiv.innerHTML = `<div class="error">Error: ${error.message}</div>`;
+            }
+        };
+
+        // Initialize on load
+        init();
+    </script>
+</body>
+</html>
+
