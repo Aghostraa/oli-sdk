@@ -13,7 +13,15 @@ import type {
 import type { IOLIClient } from './types/client';
 import * as helpers from './helpers';
 
-export class GraphQLClient {
+/**
+ * GraphQL Client for querying attestations
+ *
+ * @deprecated The GraphQL API is considered legacy. Migrate to {@link RestClient} helpers for
+ * REST-first workflows.
+ *
+ * @template TCustomTags - Custom tag interface for additional type safety
+ */
+export class GraphQLClient<TCustomTags = {}> {
   private oli: IOLIClient;
 
   constructor(oliClient: IOLIClient) {
@@ -26,7 +34,7 @@ export class GraphQLClient {
    * @param filters - Query filters (address, attester, timeCreated, etc.)
    * @returns JSON response containing matching attestation data
    */
-  async queryAttestations(filters: AttestationFilters = {}): Promise<AttestationQueryResponse | ExpandedAttestationQueryResponse> {
+  async queryAttestations(filters: AttestationFilters = {}): Promise<AttestationQueryResponse | ExpandedAttestationQueryResponse<TCustomTags>> {
     const {
       address,
       attester,
@@ -127,12 +135,12 @@ export class GraphQLClient {
    * @param attestationsData - GraphQL response from queryAttestations()
    * @returns Response with expanded decodedDataJson fields
    */
-  expandDecodedDataJson(attestationsData: AttestationQueryResponse): ExpandedAttestationQueryResponse {
-    const expandedData: ExpandedAttestation[] = [];
+  expandDecodedDataJson(attestationsData: AttestationQueryResponse): ExpandedAttestationQueryResponse<TCustomTags> {
+    const expandedData: ExpandedAttestation<TCustomTags>[] = [];
 
     for (const row of attestationsData.data.attestations) {
       // Start with the original row data
-      const expandedRow: ExpandedAttestation = { ...row };
+      const expandedRow: ExpandedAttestation<TCustomTags> = { ...row } as ExpandedAttestation<TCustomTags>;
 
       // Check if decodedDataJson exists and is not empty
       if (row.decodedDataJson) {
@@ -155,16 +163,16 @@ export class GraphQLClient {
 
               // Handle BigNumber hex values
               if (value && typeof value === 'object' && value.type === 'BigNumber' && value.hex) {
-                expandedRow[fieldName] = parseInt(value.hex, 16);
+                (expandedRow as any)[fieldName] = parseInt(value.hex, 16);
               }
               // Handle empty arrays or objects
               else if ((Array.isArray(value) || typeof value === 'object') && 
                        ((Array.isArray(value) && value.length === 0) || 
                         (typeof value === 'object' && value !== null && Object.keys(value).length === 0))) {
-                expandedRow[fieldName] = value;
+                (expandedRow as any)[fieldName] = value;
               }
               else {
-                expandedRow[fieldName] = value;
+                (expandedRow as any)[fieldName] = value;
               }
 
               // Special handling for OLI tags_json field - parse and expand it
@@ -179,7 +187,7 @@ export class GraphQLClient {
                 }
               }
             } else {
-              expandedRow[fieldName] = null;
+              (expandedRow as any)[fieldName] = null;
             }
           }
         } catch (error) {
@@ -209,12 +217,12 @@ export class GraphQLClient {
   async getLabelsForAddress(
     address: string,
     options: Omit<AttestationFilters, 'address'> = {}
-  ): Promise<ExpandedAttestationQueryResponse> {
+  ): Promise<ExpandedAttestationQueryResponse<TCustomTags>> {
     return this.queryAttestations({
       ...options,
       address,
       expandJson: true
-    }) as Promise<ExpandedAttestationQueryResponse>;
+    }) as Promise<ExpandedAttestationQueryResponse<TCustomTags>>;
   }
 
   /**
@@ -228,12 +236,12 @@ export class GraphQLClient {
   async getLabelsByAttester(
     attester: string,
     options: Omit<AttestationFilters, 'attester'> = {}
-  ): Promise<ExpandedAttestationQueryResponse> {
+  ): Promise<ExpandedAttestationQueryResponse<TCustomTags>> {
     return this.queryAttestations({
       ...options,
       attester,
       expandJson: true
-    }) as Promise<ExpandedAttestationQueryResponse>;
+    }) as Promise<ExpandedAttestationQueryResponse<TCustomTags>>;
   }
 
   /**
@@ -255,7 +263,7 @@ export class GraphQLClient {
   async getBestLabelForAddress(
     address: string,
     options: Omit<AttestationFilters, 'address'> = {}
-  ): Promise<ExpandedAttestation | null> {
+  ): Promise<ExpandedAttestation<TCustomTags> | null> {
     const result = await this.getLabelsForAddress(address, options);
     const labels = result.data.attestations;
     
@@ -314,7 +322,7 @@ export class GraphQLClient {
   async getValidLabelsForAddress(
     address: string,
     options: Omit<AttestationFilters, 'address'> = {}
-  ): Promise<ExpandedAttestation[]> {
+  ): Promise<ExpandedAttestation<TCustomTags>[]> {
     const result = await this.getLabelsForAddress(address, options);
     let labels = result.data.attestations;
     
@@ -367,4 +375,3 @@ export class GraphQLClient {
     return helpers.getDisplayName(label, (this.oli as any).displayConfig);
   }
 }
-

@@ -11,10 +11,11 @@ The OLI SDK provides a simple, type-safe way to query blockchain address labels 
 
 - 🔄 **Dynamic Types**: Tag definitions and value sets are fetched from GitHub at runtime, so you're always up-to-date
 - 🎯 **Type-Safe**: Full TypeScript support with comprehensive type definitions
-- 🚀 **Easy to Use**: Simple API for querying labels by address, attester, or time
+- 🔍 **REST-First Helpers**: High-level `rest.*` helpers for search, analytics, bulk lookups, and latest activity (no manual JSON parsing)
+- ⚡ **Caching & Dedup**: Built-in request deduplication plus opt-in cache controls (`cacheTtl`, `staleWhileRevalidate`)
 - 🌐 **Multi-Chain**: Supports Base, Optimism, Ethereum, and custom networks
-- 📦 **Lightweight**: Minimal dependencies, browser and Node.js compatible
-- ⚡ **Fast**: Efficient GraphQL queries with built-in data expansion
+- 🔐 **Proxy Utility**: Ship with a drop-in `createProxyHandler` for Next.js/Express to inject API keys safely
+- 🛡️ **Runtime Validation**: Zod-based guards catch breaking API changes with clear error messages
 
 ## 📦 Installation
 
@@ -32,19 +33,161 @@ pnpm add @openlabels/sdk
 
 ## 🚀 Quick Start
 
+### Step 0: Configure Environment
+
+```bash
+export OLI_API_KEY="your_project_api_key"
+```
+
+### Step 1: (Optional) Add a Proxy for Browser Apps
+
+```typescript
+// /pages/api/oli/[...path].ts (Next.js) or Express middleware
+import { createProxyHandler } from '@openlabels/sdk/proxy';
+
+export default createProxyHandler({
+  apiKey: process.env.OLI_API_KEY!,
+  forwardHeaders: ['authorization']
+});
+```
+
+### Step 2: Import and Initialize
+
 ```typescript
 import { OLIClient } from '@openlabels/sdk';
 
-// Create and initialize client
-const oli = new OLIClient();
-await oli.init();
+const oli = new OLIClient({
+  api: {
+    apiKey: process.env.OLI_API_KEY!,
+    enableCache: true,
+    cacheTtl: 30_000,
+    staleWhileRevalidate: 5_000
+  }
+});
 
-// Query labels for an address
-const labels = await oli.graphql.getLabelsForAddress('0x1234...');
-console.log(labels.data.attestations);
+await oli.init();
 ```
 
+### Step 3: Query Labels
+
+```typescript
+// Simple: Get display name
+const name = await oli.rest.getDisplayName('0x1234...');
+
+// Complete: Get formatted summary
+const summary = await oli.rest.getAddressSummary('0x1234...');
+console.log(summary.name, summary.category, summary.formattedDate);
+
+// Analytics: Attester leaderboard
+const leaderboard = await oli.rest.getAttesterLeaderboard({ limit: 10 });
+
+// Advanced: Get all valid labels (filtered & ranked)
+const labels = await oli.rest.getValidLabelsForAddress('0x1234...');
+```
+
+## 🎨 Developer Experience Features
+
+### Convenience Methods
+
+The SDK provides multiple levels of convenience for different use cases:
+
+**Level 1: Simplest** - Just get a name
+```typescript
+const name = await oli.rest.getDisplayName('0x...');
+```
+
+**Level 2: Formatted Summary** - All info ready for UI
+```typescript
+const summary = await oli.rest.getAddressSummary('0x...');
+// Returns: { name, category, formattedDate, formattedAddress, ... }
+```
+
+**Level 3: Best Label** - Auto-filtered & ranked
+```typescript
+const label = await oli.rest.getBestLabelForAddress('0x...');
+```
+
+**Level 4: Latest & Search** - Feed-ready data
+```typescript
+const latest = await oli.rest.getLatestAttestations({ limit: 25 });
+const matches = await oli.rest.searchAttestations({ tagKey: 'usage_category', tagValue: 'dex' });
+```
+
+**Level 5: All Valid Labels** - Filtered, ranked, sorted
+```typescript
+const labels = await oli.rest.getValidLabelsForAddress('0x...');
+```
+
+**Level 6: Raw Data** - Maximum control
+```typescript
+const result = await oli.rest.getAttestationsForAddress('0x...');
+```
+
+### Smart Configuration
+
+Configure once at initialization, applies everywhere automatically:
+
+```typescript
+const oli = new OLIClient({
+  attesters: {
+    trustedAttesters: ['0x...'],     // Whitelist
+    blockedAttesters: ['0x...'],     // Blacklist
+    attesterPriority: ['0x...']      // Ranking
+  },
+  display: {
+    nameFields: ['contract_name', 'address_name'],
+    addressFormat: 'short',           // Auto-format addresses
+    dateFormat: 'relative'            // "2 hours ago"
+  },
+  filters: {
+    allowedCategories: ['dex', 'bridge'],
+    excludedCategories: ['spam'],
+    minAge: 86400,                   // Filter by age
+    maxAge: 31536000
+  },
+  autoRank: true                     // Auto-sort by trust
+});
+```
+
+### TypeScript Generics
+
+The SDK supports TypeScript generics for enhanced type safety and autocomplete:
+
+```typescript
+// Default - Common tags with autocomplete
+const oli = new OLIClient();
+const label = await oli.rest.getBestLabelForAddress('0x...');
+// Full autocomplete for: contract_name, usage_category, etc.
+
+// Custom tags - Add your own types
+interface MyProjectTags {
+  my_custom_rating: number;
+  my_security_audit: 'passed' | 'failed' | 'pending';
+}
+
+const oli = new OLIClient<MyProjectTags>();
+const label = await oli.rest.getBestLabelForAddress('0x...');
+// Autocomplete for BOTH common tags AND your custom tags!
+```
+
+See [ARCHITECTURE.md](./ARCHITECTURE.md) and [SCHEMA_EVOLUTION_GUIDE.md](./SCHEMA_EVOLUTION_GUIDE.md) for more details.
+
 ## 📖 Usage Examples
+
+### Configure REST API Access
+
+Protected endpoints such as `/labels`, `/labels/bulk`, `/addresses/search`, and `/analytics/attesters` require an `x-api-key` header. Provide it via the `api` block when constructing the client:
+
+```typescript
+const oli = new OLIClient({
+  api: {
+    baseUrl: 'https://api.openlabelsinitiative.org',
+    apiKey: process.env.OLI_API_KEY!
+  }
+});
+```
+
+You can also set `defaultHeaders`, `timeoutMs`, or `retries` for finer-grained control. Always keep your API key private and rotate it regularly.
 
 ### Initialize the Client
 
@@ -73,33 +216,41 @@ await oli.init();
 ### Query Labels for an Address
 
 ```typescript
-// Get all labels for an address
-const result = await oli.graphql.getLabelsForAddress('0x1234...');
+// Get all labels for an address (REST)
+const response = await oli.rest.getLabels({ address: '0x1234...' });
 
-// Access the labels
-for (const attestation of result.data.attestations) {
-  console.log('Label:', attestation.address_name);
-  console.log('Tagged by:', attestation.attester);
-  console.log('Usage category:', attestation.usage_category);
+console.log('Total labels:', response.count);
+for (const label of response.labels) {
+  console.log('Tag:', label.tag_id);
+  console.log('Value:', label.tag_value);
+  console.log('Tagged by:', label.attester);
 }
 
-// With pagination
-const recent = await oli.graphql.getLabelsForAddress('0x1234...', { take: 10 });
+// Bulk lookup
+const bulk = await oli.rest.getLabelsBulk({
+  addresses: ['0x1234...', '0xabcd...'],
+  include_all: true
+});
+console.log(bulk.results);
 ```
 
-### Query Labels by Attester
+### Analytics & Tag Insights
 
 ```typescript
-// Get all labels created by a specific attester
-const result = await oli.graphql.getLabelsByAttester('0xabcd...');
+// Leaderboard
+const topAttesters = await oli.rest.getAttesterLeaderboard({ limit: 5, orderBy: 'tags' });
 
-for (const label of result.data.attestations) {
-  console.log('Labeled address:', label.recipient);
-  console.log('Label name:', label.address_name);
-}
+// Full analytics payload (counts + unique attestations)
+const analytics = await oli.rest.getAttesterAnalytics({ limit: 20 });
+
+// Tag breakdown (server API or local fallback)
+const breakdown = await oli.rest.getTagBreakdown({ tag_id: 'usage_category', limit: 10 });
+console.log(breakdown.results);
 ```
 
-### Advanced Queries
+### GraphQL Helpers (EAS) *(Legacy)*
+
+⚠️ **Deprecated**: The GraphQL helper remains available for migrations, but new projects should switch to the REST helpers. TypeScript consumers will see deprecation warnings on `GraphQLClient` methods.
 
 ```typescript
 // Query with custom filters
@@ -157,6 +308,19 @@ function validateLabel(data: any) {
 }
 ```
 
+### Bulk Address Lookups
+
+```typescript
+const bulkLabels = await oli.rest.getAttestationsForAddresses([
+  '0x1234...',
+  '0xabcd...'
+], {
+  limit_per_address: 3
+});
+
+console.log(bulkLabels[0].address, bulkLabels[0].labels.length);
+```
+
 ### Bulk Data Export
 
 ```typescript
@@ -176,6 +340,31 @@ console.log('First label:', decodedLabels[0]);
 await oli.refresh();
 console.log('Definitions updated!');
 ```
+
+### Proxy Middleware
+
+Forward requests through your own backend and automatically inject the `x-api-key` header:
+
+```typescript
+import express from 'express';
+import { createProxyHandler } from '@openlabels/sdk/proxy';
+
+const app = express();
+app.use('/api/oli', createProxyHandler({
+  apiKey: process.env.OLI_API_KEY!,
+  forwardHeaders: ['authorization']
+}));
+
+// Next.js (pages/api/oli/[...path].ts)
+export default createProxyHandler({
+  apiKey: process.env.OLI_API_KEY!,
+  pathRewrite: (path) => path.replace(/^\/api\/oli/, '')
+});
+```
+
+## 📚 Additional Docs
+
+- [Migration Guide: 0.1.0 REST Upgrade](docs/MIGRATION_GUIDE_v0_1_0.md)
 
 ## 🔧 API Reference
 
@@ -200,14 +389,37 @@ new OLIClient(config?: OLIConfig)
 
 #### Properties
 
-- `graphql: GraphQLClient` - GraphQL query client
+- `rest: RestClient` - REST query client (recommended)
+- `graphql: GraphQLClient` - GraphQL query client *(legacy)*
 - `fetcher: DataFetcher` - Data fetching utilities
 - `tagDefinitions: TagDefinitions` - Loaded tag definitions
 - `valueSets: ValueSets` - Loaded value sets
 
+### `RestClient`
+
+High-level REST helpers with expanded/tag-parsed output.
+
+#### Methods
+
+- `getDisplayName(address, options?)`
+- `getAddressSummary(address, options?)`
+- `getBestLabelForAddress(address, options?)`
+- `getValidLabelsForAddress(address, options?)`
+- `getLatestAttestations(options?)`
+- `searchAttestations(options)`
+- `getAttesterLeaderboard(options?)`
+- `getAttesterAnalytics(options?)`
+- `getTagBreakdown(options)`
+- `getAttestationsForAddress(address, options?)`
+- `getAttestationsForAddresses(addresses, options?)`
+- `getLabels`, `getLabelsBulk`, `searchAddressesByTag`
+- `postAttestation`, `postAttestationsBulk`
+
+All responses are already expanded (no manual `tags_json` parsing required) and validated at runtime using Zod.
+
 ### `GraphQLClient`
 
-Client for querying attestations via GraphQL.
+⚠️ **Legacy**: GraphQL helpers remain available for backward compatibility but will be removed in a future major release. Prefer the REST helpers above.
 
 #### Methods
 
@@ -234,6 +446,47 @@ Utilities for fetching tag definitions and bulk exports.
 - **Optimism**
 - **Ethereum Mainnet**
 - Custom networks (provide your own configuration)
+
+## ⚠️ Browser vs Node.js: CORS Considerations
+
+**Important:** CORS (Cross-Origin Resource Sharing) is a browser security feature, not a package distribution issue. Publishing to npm doesn't fix CORS - it depends on where your code runs.
+
+### ✅ Node.js (No CORS Issues)
+When you use the SDK in Node.js (server-side), CORS is **not an issue** because Node.js doesn't enforce browser CORS policies:
+
+```typescript
+// ✅ Works perfectly in Node.js
+import { OLIClient } from '@openlabels/sdk';
+
+const oli = new OLIClient({ api: { apiKey: '...' } });
+await oli.init();
+
+const labels = await oli.rest.getLabels({ address: '0x1234...' });
+```
+
+### ⚠️ Browser (May Have CORS Issues)
+When you use the SDK in a browser, you may encounter CORS errors if the API server doesn't have CORS headers enabled:
+
+```typescript
+// ⚠️ May fail in browser if API doesn't allow CORS
+import { OLIClient } from '@openlabels/sdk';
+
+const oli = new OLIClient({ api: { apiKey: '...' } });
+await oli.init();
+
+// This might fail with CORS error in browser
+const labels = await oli.rest.getLabels({ address: '0x1234...' });
+```
+
+**Solutions for Browser Use:**
+1. **Recommended:** Use the SDK from a Node.js backend/API route (serverless functions, Next.js API routes, Express server, etc.)
+2. **Proxy:** Use `createProxyHandler` (see above) or your own proxy to forward requests with server-injected credentials
+3. **API Server:** Request that the API server adds CORS headers (`Access-Control-Allow-Origin: *`)
+4. **Development Only:** Use a browser extension that disables CORS (not for production)
+
+**Bottom Line:** The SDK works identically whether installed from npm or used locally. CORS depends on:
+- ✅ **Node.js environment** = No CORS issues
+- ⚠️ **Browser environment** = May have CORS issues (depending on API server configuration)
 
 ## 🎯 Why Dynamic Types?
 
@@ -266,9 +519,16 @@ The SDK is fully typed with TypeScript. Key types include:
 - `ValueSets` - Valid values for enumerated tags
 - `NetworkConfig` - Network configuration
 
+## 📚 Additional Documentation
+
+- [ARCHITECTURE.md](./ARCHITECTURE.md) - Detailed SDK architecture and design decisions
+- [SCHEMA_EVOLUTION_GUIDE.md](./SCHEMA_EVOLUTION_GUIDE.md) - How the SDK handles schema changes
+- [CHANGELOG.md](./CHANGELOG.md) - Version history and changes
+- [CONTRIBUTING.md](./CONTRIBUTING.md) - Guidelines for contributing
+
 ## 🤝 Contributing
 
-Contributions are welcome! Please see the main [OLI repository](https://github.com/openlabelsinitiative/OLI) for contribution guidelines.
+Contributions are welcome! Please see [CONTRIBUTING.md](./CONTRIBUTING.md) for guidelines and the main [OLI repository](https://github.com/openlabelsinitiative/OLI) for more information.
 
 ## 📄 License
 
@@ -336,4 +596,3 @@ main();
 ## 🙏 Acknowledgments
 
 Built with ❤️ by the Open Labels Initiative community.
-

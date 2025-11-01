@@ -4,13 +4,33 @@
 
 import { DataFetcher } from './fetcher';
 import { GraphQLClient } from './graphql';
-import type { OLIConfig, NetworkConfig, AttesterConfig, LabelDisplayConfig, LabelFilterConfig } from './types/common';
+import { NETWORKS as NETWORK_CONFIGS, DEFAULT_API_CONFIG } from './types/common';
+import type { OLIConfig, NetworkConfig, AttesterConfig, LabelDisplayConfig, LabelFilterConfig, ResolvedAPIConfig, APIConfig } from './types/common';
 import type { TagDefinitions, ValueSets } from './types/tags';
 import type { IOLIClient } from './types/client';
-import { NETWORKS as NETWORK_CONFIGS } from './types/common';
 import * as helpers from './helpers';
+import { RestClient } from './rest';
 
-export class OLIClient implements IOLIClient {
+/**
+ * Main OLI SDK Client
+ * 
+ * @template TCustomTags - Optional interface to define custom tag types for improved type safety
+ * 
+ * @example
+ * ```typescript
+ * // Without custom tags (uses default types)
+ * const oli = new OLIClient();
+ * 
+ * // With custom tags for type safety
+ * interface MyProjectTags {
+ *   my_custom_field: string;
+ *   my_numeric_field: number;
+ * }
+ * 
+ * const oli = new OLIClient<MyProjectTags>();
+ * ```
+ */
+export class OLIClient<TCustomTags = {}> implements IOLIClient {
   /** Network configuration */
   public readonly network: NetworkConfig;
   
@@ -37,15 +57,21 @@ export class OLIClient implements IOLIClient {
   
   /** Auto-rank labels */
   public readonly autoRank: boolean;
-  
+
+  /** REST API configuration */
+  public readonly apiConfig: ResolvedAPIConfig;
+
   /** Helper utilities */
   public readonly helpers = helpers;
-  
+
   /** Data fetcher instance */
   public readonly fetcher: DataFetcher;
   
   /** GraphQL client instance */
-  public readonly graphql: GraphQLClient;
+  public readonly graphql: GraphQLClient<TCustomTags>;
+
+  /** REST client instance */
+  public readonly rest: RestClient<TCustomTags>;
   
   /** Initialization state */
   private initialized: boolean = false;
@@ -100,10 +126,12 @@ export class OLIClient implements IOLIClient {
     };
     this.filterConfig = config.filters || {};
     this.autoRank = config.autoRank ?? true;
+    this.apiConfig = this.resolveApiConfig(config.api);
 
     // Initialize sub-modules
     this.fetcher = new DataFetcher(this);
     this.graphql = new GraphQLClient(this);
+    this.rest = new RestClient<TCustomTags>(this);
   }
 
   /**
@@ -227,5 +255,24 @@ export class OLIClient implements IOLIClient {
     this.ensureInitialized();
     return this.fetcher.isValidValue(tagId, value);
   }
-}
 
+  /**
+   * Resolve REST API configuration with default values.
+   */
+  private resolveApiConfig(apiConfig?: APIConfig): ResolvedAPIConfig {
+    return {
+      baseUrl: apiConfig?.baseUrl ?? DEFAULT_API_CONFIG.baseUrl,
+      apiKey: apiConfig?.apiKey ?? DEFAULT_API_CONFIG.apiKey,
+      defaultHeaders: {
+        ...DEFAULT_API_CONFIG.defaultHeaders,
+        ...(apiConfig?.defaultHeaders ?? {})
+      },
+      timeoutMs: apiConfig?.timeoutMs ?? DEFAULT_API_CONFIG.timeoutMs,
+      retries: apiConfig?.retries ?? DEFAULT_API_CONFIG.retries,
+      enableDeduplication: apiConfig?.enableDeduplication ?? DEFAULT_API_CONFIG.enableDeduplication,
+      enableCache: apiConfig?.enableCache ?? DEFAULT_API_CONFIG.enableCache,
+      cacheTtl: apiConfig?.cacheTtl ?? DEFAULT_API_CONFIG.cacheTtl,
+      staleWhileRevalidate: apiConfig?.staleWhileRevalidate ?? DEFAULT_API_CONFIG.staleWhileRevalidate
+    };
+  }
+}

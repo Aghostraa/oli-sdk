@@ -1,6 +1,6 @@
 {
   "name": "@openlabels/sdk",
-  "version": "1.0.0",
+  "version": "0.1.0",
   "description": "TypeScript/JavaScript SDK for querying Open Labels Initiative (OLI) address labels on-chain and off-chain",
   "main": "dist/index.js",
   "module": "dist/index.mjs",
@@ -18,8 +18,9 @@
   "scripts": {
     "build": "tsup",
     "dev": "tsup --watch",
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "prepublishOnly": "npm run build"
+    "test": "tsx tests/rest-client.test.ts",
+    "prepublishOnly": "npm run build",
+    "demo": "node demo-node.js"
   },
   "keywords": [
     "ethereum",
@@ -43,13 +44,14 @@
     "@types/js-yaml": "^4.0.9",
     "@types/node": "^20.0.0",
     "tsup": "^8.0.0",
+    "tsx": "^4.7.0",
     "typescript": "^5.3.0"
   },
   "dependencies": {
-    "js-yaml": "^4.1.0"
+    "js-yaml": "^4.1.0",
+    "zod": "^3.23.8"
   },
   "engines": {
     "node": ">=16.0.0"
   }
 }
-

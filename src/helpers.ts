@@ -4,6 +4,7 @@
  */
 
 import type { ExpandedAttestation } from './types/attestation';
+import type { RestAttestationRecord } from './types/api';
 
 /**
  * Configuration for label display preferences
@@ -52,10 +53,31 @@ export interface LabelFilterConfig {
 }
 
 /**
+ * Get all available tag fields from a label (excluding base attestation fields)
+ * Useful for discovering what tags are actually present in a label
+ */
+export function getAvailableTags<T = {}>(label: ExpandedAttestation<T>): string[] {
+  const baseFields = [
+    'attester', 'decodedDataJson', 'expirationTime', 'id', 'ipfsHash',
+    'isOffchain', 'recipient', 'refUID', 'revocable', 'revocationTime',
+    'revoked', 'time', 'timeCreated', 'txid', '_parsing_error'
+  ];
+  
+  return Object.keys(label).filter(key => !baseFields.includes(key));
+}
+
+/**
+ * Check if a specific tag exists in a label
+ */
+export function hasTag<T = {}>(label: ExpandedAttestation<T>, tagName: string): boolean {
+  return tagName in label && label[tagName] !== undefined && label[tagName] !== null;
+}
+
+/**
  * Get a display name from a label with smart fallbacks
  */
-export function getDisplayName(
-  label: ExpandedAttestation,
+export function getDisplayName<T = {}>(
+  label: ExpandedAttestation<T>,
   config: LabelDisplayConfig = {}
 ): string {
   const nameFields = config.nameFields || [
@@ -174,10 +196,10 @@ export function isAttesterTrusted(
 /**
  * Filter labels based on configuration
  */
-export function filterLabels(
-  labels: ExpandedAttestation[],
+export function filterLabels<T = {}>(
+  labels: ExpandedAttestation<T>[],
   config: LabelFilterConfig = {}
-): ExpandedAttestation[] {
+): ExpandedAttestation<T>[] {
   return labels.filter(label => {
     // Filter by category
     if (config.allowedCategories) {
@@ -223,10 +245,10 @@ export function filterLabels(
 /**
  * Rank labels by priority (higher score = better)
  */
-export function rankLabels(
-  labels: ExpandedAttestation[],
+export function rankLabels<T = {}>(
+  labels: ExpandedAttestation<T>[],
   config: AttesterConfig = {}
-): ExpandedAttestation[] {
+): ExpandedAttestation<T>[] {
   return [...labels].sort((a, b) => {
     // Priority 1: Attester priority order
     if (config.attesterPriority) {
@@ -257,11 +279,11 @@ export function rankLabels(
 /**
  * Get the best label for an address based on configuration
  */
-export function getBestLabel(
-  labels: ExpandedAttestation[],
+export function getBestLabel<T = {}>(
+  labels: ExpandedAttestation<T>[],
   attesterConfig: AttesterConfig = {},
   filterConfig: LabelFilterConfig = {}
-): ExpandedAttestation | null {
+): ExpandedAttestation<T> | null {
   if (labels.length === 0) return null;
 
   // Filter by attester trust
@@ -282,7 +304,7 @@ export function getBestLabel(
 /**
  * Check if a label is valid (not revoked, not expired)
  */
-export function isLabelValid(label: ExpandedAttestation): boolean {
+export function isLabelValid<T = {}>(label: ExpandedAttestation<T>): boolean {
   // Check if revoked
   if (label.revoked) return false;
 
@@ -336,8 +358,8 @@ export interface LabelSummary {
   fields: Record<string, any>;
 }
 
-export function getLabelSummary(
-  label: ExpandedAttestation,
+export function getLabelSummary<T = {}>(
+  label: ExpandedAttestation<T>,
   displayConfig: LabelDisplayConfig = {}
 ): LabelSummary {
   return {
@@ -355,4 +377,56 @@ export function getLabelSummary(
     fields: getLabelFields(label)
   };
 }
+function parseRestTimestamp(value: string | null | undefined): number {
+  if (!value) return 0;
+  const date = new Date(value);
+  const time = Number.isNaN(date.getTime()) ? 0 : Math.floor(date.getTime() / 1000);
+  return time;
+}
 
+/**
+ * Expand a REST attestation record by flattening tags_json and filling required fields.
+ */
+export function expandRestAttestation<T = {}>(record: RestAttestationRecord): ExpandedAttestation<T> {
+  const timeSeconds = parseRestTimestamp(record.time);
+
+  const expanded: Record<string, any> = {
+    attester: record.attester,
+    expirationTime: 0,
+    id: record.uid,
+    ipfsHash: record.ipfs_hash ?? '',
+    isOffchain: record.is_offchain,
+    recipient: record.recipient ?? '',
+    refUID: record.uid,
+    revocable: true,
+    revocationTime: 0,
+    revoked: record.revoked,
+    time: timeSeconds,
+    timeCreated: timeSeconds,
+    txid: '',
+    chain_id: record.chain_id ?? undefined,
+    schema_info: record.schema_info,
+    uid: record.uid,
+    time_iso: record.time
+  };
+
+  if (record.tags_json && typeof record.tags_json === 'object' && !Array.isArray(record.tags_json)) {
+    expanded.tags_json = record.tags_json;
+    for (const [key, value] of Object.entries(record.tags_json)) {
+      expanded[key] = value;
+    }
+  } else {
+    expanded.tags_json = record.tags_json ?? null;
+  }
+
+  return expanded as ExpandedAttestation<T>;
+}
+
+/**
+ * Expand an array of REST attestation records.
+ */
+export function expandRestAttestations<T = {}>(
+  records: RestAttestationRecord[]
+): ExpandedAttestation<T>[] {
+  return records.map(record => expandRestAttestation<T>(record));
+}

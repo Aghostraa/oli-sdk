@@ -13,6 +13,9 @@ export { OLIClient } from './client';
 // Sub-modules
 export { DataFetcher } from './fetcher';
 export { GraphQLClient } from './graphql';
+export { RestClient } from './rest';
+export { createProxyHandler } from './proxy';
+export type { ProxyHandlerOptions } from './proxy';
 
 // Types - Common
 export type {
@@ -20,9 +23,11 @@ export type {
   OLIConfig,
   AttesterConfig,
   LabelDisplayConfig,
-  LabelFilterConfig
+  LabelFilterConfig,
+  APIConfig,
+  ResolvedAPIConfig
 } from './types/common';
-export { NETWORKS } from './types/common';
+export { NETWORKS, DEFAULT_API_CONFIG } from './types/common';
 
 // Types - Client
 export type {
@@ -40,6 +45,40 @@ export type {
   UsageCategory,
   UsageCategoriesResponse
 } from './types/tags';
+
+// Types - REST API
+export type {
+  LabelsQueryParams,
+  LabelsResponse,
+  BulkLabelsRequest,
+  BulkLabelsResponse,
+  LabelSearchResponse,
+  AddressWithLabel,
+  AttestationPayload,
+  AttestationSig,
+  AttestationTypes,
+  AttestationTypesField,
+  AttestationDomain,
+  AttestationMessage,
+  AttestationSignatureFields,
+  SingleAttestationResponse,
+  BulkAttestationRequest,
+  BulkAttestationResponse,
+  RestAttestationQueryParams,
+  RestAttestationQueryResponse,
+  RestAttestationRecord,
+  AttesterAnalyticsQueryParams,
+  AttesterAnalyticsResponse,
+  AttesterAnalytics,
+  TagBreakdownQueryParams,
+  TagBreakdownResponse,
+  TagBreakdownItem,
+  HTTPValidationError,
+  ValidationError,
+  LabelItem,
+  AddressLabels
+} from './types/api';
+export { RestAPIError } from './rest';
 
 // Types - Attestations
 export type {
@@ -60,4 +99,3 @@ export type { LabelSummary } from './helpers';
 
 // Default export
 export { OLIClient as default } from './client';
-
