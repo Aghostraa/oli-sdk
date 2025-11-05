@@ -706,22 +706,20 @@ export class RestClient<TCustomTags = {}> {
       }
     };
 
+    // Only include parameters defined in OpenAPI spec for /attestations endpoint
+    // See: https://api.openlabelsinitiative.org/openapi.json
     assign('uid', params.uid);
     assign('attester', params.attester);
     assign('recipient', params.recipient);
     assign('schema_info', params.schema_info ?? params.schema_id);
-    assign('schema_id', params.schema_id);
-    assign('data_contains', params.data_contains);
-    assign('chain_id', params.chain_id);
-
     const since = this.normalizeTimestamp(params.since);
-    const until = this.normalizeTimestamp(params.until);
     assign('since', since);
-    assign('until', until);
-
     assign('order', params.order);
     assign('limit', params.limit);
-    assign('cursor', params.cursor);
+
+    // Note: The following parameters are not in the OpenAPI spec but are kept for backward compatibility
+    // They may be silently ignored by the API if not supported:
+    // - data_contains, chain_id, until, cursor, schema_id (as separate param)
 
     return query;
   }
