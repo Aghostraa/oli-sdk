@@ -23,20 +23,6 @@ export interface LabelDisplayConfig {
 }
 
 /**
- * Configuration for attester trust
- */
-export interface AttesterConfig {
-  /** List of trusted attester addresses (whitelist) */
-  trustedAttesters?: string[];
-  /** List of blocked attester addresses (blacklist) */
-  blockedAttesters?: string[];
-  /** Minimum trust score (0-100) */
-  minTrustScore?: number;
-  /** Prioritize labels by attester (ordered list) */
-  attesterPriority?: string[];
-}
-
-/**
  * Configuration for label filtering
  */
 export interface LabelFilterConfig {
@@ -166,34 +152,6 @@ function getRelativeTime(date: Date): string {
 }
 
 /**
- * Check if an attester is trusted based on configuration
- */
-export function isAttesterTrusted(
-  attester: string,
-  config: AttesterConfig
-): boolean {
-  const attesterLower = attester.toLowerCase();
-
-  // Check blocklist first
-  if (config.blockedAttesters) {
-    const blocked = config.blockedAttesters.some(
-      addr => addr.toLowerCase() === attesterLower
-    );
-    if (blocked) return false;
-  }
-
-  // If whitelist exists, attester must be in it
-  if (config.trustedAttesters && config.trustedAttesters.length > 0) {
-    return config.trustedAttesters.some(
-      addr => addr.toLowerCase() === attesterLower
-    );
-  }
-
-  // No whitelist means all non-blocked attesters are trusted
-  return true;
-}
-
-/**
  * Filter labels based on configuration
  */
 export function filterLabels<T = {}>(
@@ -243,35 +201,15 @@ export function filterLabels<T = {}>(
 }
 
 /**
- * Rank labels by priority (higher score = better)
+ * Rank labels by recency and revocation status (non-revoked first)
  */
 export function rankLabels<T = {}>(
-  labels: ExpandedAttestation<T>[],
-  config: AttesterConfig = {}
+  labels: ExpandedAttestation<T>[]
 ): ExpandedAttestation<T>[] {
   return [...labels].sort((a, b) => {
-    // Priority 1: Attester priority order
-    if (config.attesterPriority) {
-      const aIndex = config.attesterPriority.findIndex(
-        addr => addr.toLowerCase() === a.attester.toLowerCase()
-      );
-      const bIndex = config.attesterPriority.findIndex(
-        addr => addr.toLowerCase() === b.attester.toLowerCase()
-      );
-
-      if (aIndex !== -1 && bIndex === -1) return -1;
-      if (aIndex === -1 && bIndex !== -1) return 1;
-      if (aIndex !== -1 && bIndex !== -1 && aIndex !== bIndex) {
-        return aIndex - bIndex;
-      }
-    }
-
-    // Priority 2: Non-revoked over revoked
     if (a.revoked !== b.revoked) {
       return a.revoked ? 1 : -1;
     }
-
-    // Priority 3: More recent
     return b.timeCreated - a.timeCreated;
   });
 }
@@ -281,24 +219,15 @@ export function rankLabels<T = {}>(
  */
 export function getBestLabel<T = {}>(
   labels: ExpandedAttestation<T>[],
-  attesterConfig: AttesterConfig = {},
   filterConfig: LabelFilterConfig = {}
 ): ExpandedAttestation<T> | null {
   if (labels.length === 0) return null;
 
-  // Filter by attester trust
-  let filtered = labels.filter(label => 
-    isAttesterTrusted(label.attester, attesterConfig)
-  );
-
-  // Apply additional filters
+  let filtered = labels.filter(label => isLabelValid(label));
   filtered = filterLabels(filtered, filterConfig);
-
   if (filtered.length === 0) return null;
 
-  // Rank and return best
-  const ranked = rankLabels(filtered, attesterConfig);
-  return ranked[0];
+  return rankLabels(filtered)[0];
 }
 
 /**

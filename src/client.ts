@@ -3,9 +3,8 @@
  */
 
 import { DataFetcher } from './fetcher';
-import { GraphQLClient } from './graphql';
-import { NETWORKS as NETWORK_CONFIGS, DEFAULT_API_CONFIG } from './types/common';
-import type { OLIConfig, NetworkConfig, AttesterConfig, LabelDisplayConfig, LabelFilterConfig, ResolvedAPIConfig, APIConfig } from './types/common';
+import { DEFAULT_API_CONFIG } from './types/common';
+import type { OLIConfig, LabelDisplayConfig, LabelFilterConfig, ResolvedAPIConfig, APIConfig } from './types/common';
 import type { TagDefinitions, ValueSets } from './types/tags';
 import type { IOLIClient } from './types/client';
 import * as helpers from './helpers';
@@ -31,14 +30,6 @@ import { RestClient } from './rest';
  * ```
  */
 export class OLIClient<TCustomTags = {}> implements IOLIClient {
-  /** Network configuration */
-  public readonly network: NetworkConfig;
-  
-  /** GraphQL endpoint for EAS queries */
-  public readonly graphqlEndpoint: string;
-  
-  /** Schema ID for OLI labels */
-  public readonly schemaId: string;
   
   /** Tag definitions (loaded dynamically from GitHub) */
   public tagDefinitions: TagDefinitions = {};
@@ -46,18 +37,12 @@ export class OLIClient<TCustomTags = {}> implements IOLIClient {
   /** Value sets for tags (loaded dynamically) */
   public valueSets: ValueSets = {};
   
-  /** Attester configuration */
-  public readonly attesterConfig: AttesterConfig;
-  
   /** Display configuration */
   public readonly displayConfig: LabelDisplayConfig;
   
   /** Filter configuration */
   public readonly filterConfig: LabelFilterConfig;
   
-  /** Auto-rank labels */
-  public readonly autoRank: boolean;
-
   /** REST API configuration */
   public readonly apiConfig: ResolvedAPIConfig;
 
@@ -67,10 +52,8 @@ export class OLIClient<TCustomTags = {}> implements IOLIClient {
   /** Data fetcher instance */
   public readonly fetcher: DataFetcher;
   
-  /** GraphQL client instance */
-  public readonly graphql: GraphQLClient<TCustomTags>;
-
-  /** REST client instance */
+  /** REST client instance (primary API surface) */
+  public readonly api: RestClient<TCustomTags>;
   public readonly rest: RestClient<TCustomTags>;
   
   /** Initialization state */
@@ -87,37 +70,9 @@ export class OLIClient<TCustomTags = {}> implements IOLIClient {
    * // Use default network (Base)
    * const oli = new OLIClient();
    * await oli.init();
-   * 
-   * // Use specific network
-   * const oli = new OLIClient({ network: 'OPTIMISM' });
-   * await oli.init();
-   * 
-   * // Custom network
-   * const oli = new OLIClient({
-   *   network: {
-   *     name: 'custom',
-   *     graphqlEndpoint: 'https://custom.easscan.org/graphql',
-   *     schemaId: '0x...'
-   *   }
-   * });
-   * await oli.init();
-   * ```
    */
   constructor(config: OLIConfig = {}) {
-    // Resolve network configuration
-    if (!config.network) {
-      this.network = NETWORK_CONFIGS.BASE;
-    } else if (typeof config.network === 'string') {
-      this.network = NETWORK_CONFIGS[config.network];
-    } else {
-      this.network = config.network;
-    }
-
-    this.graphqlEndpoint = this.network.graphqlEndpoint;
-    this.schemaId = this.network.schemaId;
-    
     // Store configurations
-    this.attesterConfig = config.attesters || {};
     this.displayConfig = config.display || {
       nameFields: ['contract_name', 'address_name', 'erc20.name', 'name'],
       addressFormat: 'short',
@@ -125,13 +80,12 @@ export class OLIClient<TCustomTags = {}> implements IOLIClient {
       showRevoked: false
     };
     this.filterConfig = config.filters || {};
-    this.autoRank = config.autoRank ?? true;
     this.apiConfig = this.resolveApiConfig(config.api);
 
     // Initialize sub-modules
     this.fetcher = new DataFetcher(this);
-    this.graphql = new GraphQLClient(this);
-    this.rest = new RestClient<TCustomTags>(this);
+    this.api = new RestClient<TCustomTags>(this);
+    this.rest = this.api;
   }
 
   /**

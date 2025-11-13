@@ -187,9 +187,8 @@ export class RestClient<TCustomTags = {}> {
       return null;
     }
 
-    const attesterConfig = (this.oli as any).attesterConfig ?? {};
     const filterConfig = (this.oli as any).filterConfig ?? {};
-    return helpers.getBestLabel(attestations, attesterConfig, filterConfig);
+    return helpers.getBestLabel(attestations, filterConfig);
   }
 
   /**
@@ -240,17 +239,10 @@ export class RestClient<TCustomTags = {}> {
   ): Promise<ExpandedAttestation<TCustomTags>[]> {
     const { attestations } = await this.getAttestationsForAddress(address, options);
 
-    const attesterConfig = (this.oli as any).attesterConfig ?? {};
     const filterConfig = (this.oli as any).filterConfig ?? {};
-    const autoRank = (this.oli as any).autoRank ?? true;
 
     let labels = attestations.filter(label => helpers.isLabelValid(label));
-    labels = labels.filter(label => helpers.isAttesterTrusted(label.attester, attesterConfig));
     labels = helpers.filterLabels(labels, filterConfig);
-
-    if (autoRank) {
-      labels = helpers.rankLabels(labels, attesterConfig);
-    }
 
     return labels;
   }

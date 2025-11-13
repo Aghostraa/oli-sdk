@@ -20,13 +20,6 @@ Thank you for your interest in contributing to the Open Labels Initiative SDK! �
    npm run build
    ```
 
-4. **Run examples**
-   ```bash
-   cd examples
-   npm install
-   npm run basic
-   ```
-
 ## Project Structure
 
 ```
@@ -35,13 +28,15 @@ oli-sdk/
 │   ├── index.ts           # Main entry point
 │   ├── client.ts          # OLI client class
 │   ├── fetcher.ts         # Data fetching utilities
-│   ├── graphql.ts         # GraphQL query client
+│   ├── rest.ts            # REST client
+│   ├── trust.ts           # Trust graph builder
+│   ├── enrichment.ts      # UI profile helpers
 │   └── types/             # TypeScript type definitions
 │       ├── common.ts
 │       ├── client.ts
 │       ├── tags.ts
 │       └── attestation.ts
-├── examples/              # Usage examples
+├── docs/                  # Supplemental references (optional)
 ├── dist/                  # Build output (generated)
 └── package.json
 ```
@@ -113,7 +108,7 @@ Currently, the SDK uses manual testing with examples. We welcome contributions f
 
 ### Adding a New Method
 
-1. Add method to appropriate class (`DataFetcher`, `GraphQLClient`, or `OLIClient`)
+1. Add method to the appropriate module (`DataFetcher`, `RestClient`, `TrustService`, `AddressEnricher`, or `OLIClient`)
 2. Add JSDoc comments explaining usage
 3. Export any new types in `src/index.ts`
 4. Add example usage in `README.md`
@@ -123,11 +118,6 @@ Currently, the SDK uses manual testing with examples. We welcome contributions f
 1. Add type definition in `src/types/` appropriate file
 2. Export type in `src/index.ts`
 3. Document type in README if user-facing
-
-### Supporting a New Network
-
-1. Add network config to `NETWORKS` in `src/types/common.ts`
-2. Update README with new network information
 
 ## Questions?
 
@@ -143,4 +133,3 @@ Be respectful and constructive in all interactions. We're building this together
 ## License
 
 By contributing, you agree that your contributions will be licensed under the MIT License.
-

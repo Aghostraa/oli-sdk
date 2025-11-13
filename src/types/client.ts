@@ -3,7 +3,7 @@
  * Separated to avoid circular dependencies
  */
 
-import type { NetworkConfig, ResolvedAPIConfig } from './common';
+import type { ResolvedAPIConfig } from './common';
 import type { TagDefinitions, ValueSets } from './tags';
 
 /**
@@ -11,9 +11,6 @@ import type { TagDefinitions, ValueSets } from './tags';
  * Used for dependency injection in sub-modules
  */
 export interface IOLIClient {
-  readonly network: NetworkConfig;
-  readonly graphqlEndpoint: string;
-  readonly schemaId: string;
   readonly apiConfig: ResolvedAPIConfig;
   tagDefinitions: TagDefinitions;
   valueSets: ValueSets;

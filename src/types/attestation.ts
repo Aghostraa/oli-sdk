@@ -1,9 +1,9 @@
 /**
- * Attestation-related types for EAS GraphQL queries
+ * Attestation-related types for expanded REST responses
  */
 
 /**
- * Raw attestation data from EAS GraphQL API
+ * Raw attestation data from the OLI REST API
  */
 export interface RawAttestation {
   attester: string;
@@ -112,7 +112,7 @@ export type BaseExpandedAttestation = Omit<RawAttestation, 'decodedDataJson'> & 
  * @example
  * ```typescript
  * // Use with common tags only (default)
- * const label: ExpandedAttestation = await oli.graphql.getBestLabelForAddress('0x...');
+ * const label: ExpandedAttestation = await oli.rest.getBestLabelForAddress('0x...');
  * // You get autocomplete for contract_name, owner_project, etc.
  * 
  * // Use with custom tags for additional type safety
@@ -122,89 +122,8 @@ export type BaseExpandedAttestation = Omit<RawAttestation, 'decodedDataJson'> & 
  * }
  * 
  * const oli = new OLIClient<MyTags>();
- * const label = await oli.graphql.getBestLabelForAddress('0x...');
+ * const label = await oli.rest.getBestLabelForAddress('0x...');
  * // Now you also get autocomplete for custom_field and my_number
  * ```
  */
 export type ExpandedAttestation<TCustomTags = {}> = BaseExpandedAttestation & TCustomTags;
-
-/**
- * GraphQL query filters for attestations
- */
-export interface AttestationFilters {
-  /** Ethereum address of the labeled contract */
-  address?: string;
-  /** Ethereum address of the attester */
-  attester?: string;
-  /** Filter for attestations created after this timestamp */
-  timeCreated?: number;
-  /** Filter for attestations with revocation time >= this timestamp */
-  revocationTime?: number;
-  /** Maximum number of attestations to return */
-  take?: number;
-  /** Specific attestation ID to filter by */
-  id?: string;
-  /** Whether to expand decodedDataJson fields into the response */
-  expandJson?: boolean;
-}
-
-/**
- * GraphQL where clause structure
- */
-export interface GraphQLWhereClause {
-  schemaId?: {
-    equals?: string;
-  };
-  id?: {
-    equals?: string;
-  };
-  recipient?: {
-    equals?: string;
-  };
-  attester?: {
-    equals?: string;
-  };
-  timeCreated?: {
-    gt?: number;
-  };
-  revocationTime?: {
-    gte?: number;
-  };
-}
-
-/**
- * GraphQL order by structure
- */
-export interface GraphQLOrderBy {
-  timeCreated?: 'asc' | 'desc';
-}
-
-/**
- * GraphQL variables structure
- */
-export interface GraphQLVariables {
-  where: GraphQLWhereClause;
-  orderBy: GraphQLOrderBy[];
-  take?: number;
-}
-
-/**
- * GraphQL query response structure (raw)
- */
-export interface AttestationQueryResponse {
-  data: {
-    attestations: RawAttestation[];
-  };
-}
-
-/**
- * GraphQL query response structure (expanded)
- * 
- * @template TCustomTags - Custom tag interface for additional type safety
- */
-export interface ExpandedAttestationQueryResponse<TCustomTags = {}> {
-  data: {
-    attestations: ExpandedAttestation<TCustomTags>[];
-  };
-}
-

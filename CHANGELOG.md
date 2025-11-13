@@ -5,6 +5,15 @@ All notable changes to the OLI SDK will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Changed
+- Label helpers now rank purely by validity + recency; attester/trust configuration was removed pending a future redesign.
+
+### Removed
+- GraphQL client, write helpers, and legacy docs (ARCHITECTURE.md, SCHEMA_EVOLUTION_GUIDE.md, docs/MIGRATION_GUIDE_v0_1_0.md) to keep the SDK read-only and REST-centric
+- Trust-specific configuration (`attesters`, `autoRank`, trust list weighting) — trust tooling will return in a future release with a simpler design.
+
 ## [0.1.1] - 2025-11-05
 
 ### Fixed

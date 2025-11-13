@@ -12,22 +12,19 @@ export { OLIClient } from './client';
 
 // Sub-modules
 export { DataFetcher } from './fetcher';
-export { GraphQLClient } from './graphql';
 export { RestClient } from './rest';
 export { createProxyHandler } from './proxy';
 export type { ProxyHandlerOptions } from './proxy';
 
 // Types - Common
 export type {
-  NetworkConfig,
   OLIConfig,
-  AttesterConfig,
   LabelDisplayConfig,
   LabelFilterConfig,
   APIConfig,
   ResolvedAPIConfig
 } from './types/common';
-export { NETWORKS, DEFAULT_API_CONFIG } from './types/common';
+export { DEFAULT_API_CONFIG } from './types/common';
 
 // Types - Client
 export type {
@@ -85,12 +82,7 @@ export type {
   RawAttestation,
   DecodedDataItem,
   ExpandedAttestation,
-  AttestationFilters,
-  GraphQLWhereClause,
-  GraphQLOrderBy,
-  GraphQLVariables,
-  AttestationQueryResponse,
-  ExpandedAttestationQueryResponse
+  CommonOLITags
 } from './types/attestation';
 
 // Helper utilities

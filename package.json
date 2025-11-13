@@ -18,7 +18,7 @@
   "scripts": {
     "build": "tsup",
     "dev": "tsup --watch",
-    "test": "tsx tests/rest-client.test.ts",
+    "test": "tsx tests/live-address.test.ts",
     "prepublishOnly": "npm run build",
     "demo": "node demo-node.js"
   },
