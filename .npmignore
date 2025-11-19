@@ -1,0 +1,13 @@
+src/
+tsconfig.json
+*.log
+*.tgz
+.DS_Store
+node_modules/
+examples/
+.git/
+.github/
+tests/
+*.test.ts
+*.spec.ts
+
