@@ -45,3 +45,25 @@ export const BASE_CHAIN_IDS = [8453, 84532] as const;
 
 export const DEFAULT_COINBASE_PAYMASTER_URL =
   'https://api.developer.coinbase.com/rpc/v1/base/hyKHUTPE7kd0VnvFqYsMiAUjvg1wshR3';
+
+function readEnvValue(key: string): string | undefined {
+  if (typeof process === 'undefined' || !process.env) {
+    return undefined;
+  }
+
+  const value = process.env[key];
+  if (!value) {
+    return undefined;
+  }
+
+  const trimmed = value.trim();
+  return trimmed === '' ? undefined : trimmed;
+}
+
+export function getDefaultCoinbasePaymasterUrl(): string {
+  return (
+    readEnvValue('OLI_COINBASE_PAYMASTER_URL') ??
+    readEnvValue('NEXT_PUBLIC_COINBASE_PAYMASTER_URL') ??
+    DEFAULT_COINBASE_PAYMASTER_URL
+  );
+}

@@ -11,6 +11,11 @@
       "import": "./dist/index.mjs",
       "require": "./dist/index.js"
     },
+    "./attest": {
+      "types": "./dist/attest.entry.d.ts",
+      "import": "./dist/attest.entry.mjs",
+      "require": "./dist/attest.entry.js"
+    },
     "./react": {
       "types": "./dist/react.d.ts",
       "import": "./dist/react.mjs",
@@ -25,6 +30,7 @@
     "dev": "tsup --watch",
     "lint": "eslint \"src/**/*.{ts,tsx}\"",
     "test": "tsx --test tests/**/*.test.ts",
+    "test:dynamic": "tsx --test tests/attest.dynamic-e2e.test.ts",
     "test:live": "tsx tests/live-address.test.ts",
     "prepublishOnly": "npm run build"
   },
@@ -65,6 +71,7 @@
   "dependencies": {
     "js-sha3": "^0.9.3",
     "js-yaml": "^4.1.0",
+    "viem": "^2.46.2",
     "zod": "^3.23.8"
   },
   "peerDependencies": {
