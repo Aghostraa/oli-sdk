@@ -1,5 +1,6 @@
 import type { AttestationRowInput, OnchainAttestationRequestData } from '../types';
 import { ZERO_BYTES32 } from './eas';
+import { buildCaip10 } from './caip';
 
 const EXCLUDED_TAG_FIELDS = new Set(['chain_id', 'address', 'attestation_network']);
 
@@ -87,7 +88,7 @@ export function prepareTags(row: AttestationRowInput): Record<string, unknown> {
 }
 
 export function prepareEncodedData(chainId: string, address: string, tags: Record<string, unknown>): string {
-  const caip10 = `${chainId}:${address}`;
+  const caip10 = buildCaip10(chainId, address);
   return encodeTwoStrings(caip10, JSON.stringify(tags));
 }
 

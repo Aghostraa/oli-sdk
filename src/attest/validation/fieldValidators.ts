@@ -1,10 +1,11 @@
 import { CHAINS } from '../core/chains';
 import { VALID_CATEGORY_IDS } from '../core/categories';
+import { isValidEvmAddress as isValidChecksumOrHexEvmAddress } from '../core/address';
 
 const VALID_PAYMASTER_CATEGORIES = ['verifying', 'token', 'verifying_and_token'];
 
 export function isValidEvmAddress(value: string): boolean {
-  return /^0x[a-fA-F0-9]{40}$/.test(value.trim());
+  return isValidChecksumOrHexEvmAddress(value.trim());
 }
 
 export function validateAddress(address: unknown): string {

@@ -14,7 +14,7 @@ test.describe('attest core + validation', () => {
     const prepared = await oli.attest.prepareSingleAttestation(
       {
         chain_id: 'eip155:1',
-        address: '0x1234567890123456789012345678901234567890',
+        address: '0x52908400098527886e0f7030069857d2e4169ee7',
         'erc20.decimals': '18',
         deployment_date: '2025-01-01T12:30',
         erc_type: 'erc20,erc721',
@@ -32,7 +32,26 @@ test.describe('attest core + validation', () => {
     assert.equal(prepared.tags.deployment_date, '2025-01-01 12:30');
     assert.deepEqual(prepared.tags.erc_type, ['erc20', 'erc721']);
     assert.match(prepared.encodedData, /^0x[0-9a-f]+$/i);
+    assert.equal(prepared.caip10, 'eip155:1:0x52908400098527886E0F7030069857D2E4169EE7');
     assert.equal(prepared.request.recipient, '0x0000000000000000000000000000000000000002');
+  });
+
+  test('validateSingle rejects invalid mixed-case checksum addresses', async () => {
+    const oli = new OLIClient();
+
+    const result = await oli.attest.validateSingle(
+      {
+        chain_id: 'eip155:1',
+        address: '0x52908400098527886E0F7030069857D2E4169Ee7'
+      },
+      {
+        mode: 'simpleProfile',
+        projects: PROJECTS
+      }
+    );
+
+    assert.equal(result.valid, false);
+    assert.ok(result.diagnostics.errors.some((entry) => entry.code === 'ADDRESS_INVALID'));
   });
 
   test('validateSingle returns category alias conversion as suggestion/conversion (not hard error)', async () => {

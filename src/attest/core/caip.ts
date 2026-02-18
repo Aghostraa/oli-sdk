@@ -1,4 +1,5 @@
 import { CHAINS } from './chains';
+import { toChecksumAddress } from './address';
 
 export interface Caip10Parts {
   chainId: string;
@@ -32,5 +33,16 @@ export function parseCaip10(value: string): Caip10Parts | null {
 
 export function buildCaip10(chainId: string, address: string): string {
   const normalizedChainId = normalizeChainId(chainId) ?? chainId;
-  return `${normalizedChainId}:${address.trim()}`;
+  const trimmedAddress = address.trim();
+  let normalizedAddress = trimmedAddress;
+
+  if (trimmedAddress.startsWith('0x') && trimmedAddress.length === 42) {
+    try {
+      normalizedAddress = toChecksumAddress(trimmedAddress);
+    } catch {
+      normalizedAddress = trimmedAddress;
+    }
+  }
+
+  return `${normalizedChainId}:${normalizedAddress}`;
 }
