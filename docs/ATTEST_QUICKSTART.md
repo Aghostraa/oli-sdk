@@ -3,7 +3,8 @@
 ## Drop-In (Frontend-like)
 
 ```ts
-import { OLIClient, createDynamicWalletAdapter } from '@openlabels/oli-sdk';
+import { OLIClient } from '@openlabels/oli-sdk';
+import { createDynamicWalletAdapter } from '@openlabels/oli-sdk/attest';
 
 const oli = new OLIClient();
 await oli.init();

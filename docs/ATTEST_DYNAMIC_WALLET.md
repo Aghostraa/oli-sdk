@@ -3,7 +3,7 @@
 ## 1. Build Adapter
 
 ```ts
-import { createDynamicWalletAdapter } from '@openlabels/oli-sdk';
+import { createDynamicWalletAdapter } from '@openlabels/oli-sdk/attest';
 
 const walletAdapter = createDynamicWalletAdapter(primaryWallet, {
   paymasterUrl: process.env.NEXT_PUBLIC_COINBASE_PAYMASTER_URL
@@ -43,6 +43,23 @@ if (validated.valid) {
   - `status`
   - `txHash`
   - `uids[]`
+
+## Environment Variables
+
+- `OLI_COINBASE_PAYMASTER_URL`
+  - Preferred SDK-level paymaster URL override.
+  - Works in Node/server and in bundlers that inline `process.env`.
+- `NEXT_PUBLIC_COINBASE_PAYMASTER_URL`
+  - Frontend-compatible fallback (same variable used in `oli-frontend`).
+  - Used when `OLI_COINBASE_PAYMASTER_URL` is not set.
+- If neither is set, SDK falls back to Coinbase Base default paymaster URL.
+
+Priority order:
+1. `createDynamicWalletAdapter(..., { paymasterUrl })`
+2. Submission context `paymasterUrl`
+3. `OLI_COINBASE_PAYMASTER_URL`
+4. `NEXT_PUBLIC_COINBASE_PAYMASTER_URL`
+5. Built-in default
 
 ## Adapter Input Requirements
 

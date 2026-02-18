@@ -37,6 +37,7 @@ yarn add @openlabels/oli-sdk
 - API reference: [`docs/ATTEST_API.md`](docs/ATTEST_API.md)
 - Quickstart + headless usage: [`docs/ATTEST_QUICKSTART.md`](docs/ATTEST_QUICKSTART.md)
 - Dynamic wallet integration: [`docs/ATTEST_DYNAMIC_WALLET.md`](docs/ATTEST_DYNAMIC_WALLET.md)
+- Environment variables: [`docs/ATTEST_ENV.md`](docs/ATTEST_ENV.md)
 - Migration guide: [`docs/ATTEST_MIGRATION.md`](docs/ATTEST_MIGRATION.md)
 
 ## ⚙️ Configuring the Client

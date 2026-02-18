@@ -15,6 +15,12 @@ oli.attest.applySuggestion(...)
 oli.attest.submitBulkOnchain(...)
 ```
 
+You can also import attestation-only APIs directly:
+
+```ts
+import { AttestClient, createDynamicWalletAdapter } from '@openlabels/oli-sdk/attest';
+```
+
 ## Mode Profiles
 
 - `simpleProfile`
