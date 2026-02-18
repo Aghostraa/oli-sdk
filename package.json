@@ -10,6 +10,11 @@
       "types": "./dist/index.d.ts",
       "import": "./dist/index.mjs",
       "require": "./dist/index.js"
+    },
+    "./react": {
+      "types": "./dist/react.d.ts",
+      "import": "./dist/react.mjs",
+      "require": "./dist/react.js"
     }
   },
   "files": [
@@ -19,7 +24,8 @@
     "build": "tsup",
     "dev": "tsup --watch",
     "lint": "eslint \"src/**/*.{ts,tsx}\"",
-    "test": "tsx tests/live-address.test.ts",
+    "test": "tsx --test tests/**/*.test.ts",
+    "test:live": "tsx tests/live-address.test.ts",
     "prepublishOnly": "npm run build"
   },
   "keywords": [
@@ -59,6 +65,14 @@
   "dependencies": {
     "js-yaml": "^4.1.0",
     "zod": "^3.23.8"
+  },
+  "peerDependencies": {
+    "react": ">=18"
+  },
+  "peerDependenciesMeta": {
+    "react": {
+      "optional": true
+    }
   },
   "engines": {
     "node": ">=16.0.0"
