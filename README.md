@@ -1,14 +1,18 @@
-# OLI SDK (Read-Only)
+# OLI SDK (Read + Onchain Attestation)
 
-> Type-safe TypeScript/JavaScript client for reading the Open Labels Initiative (OLI) public label pool over REST.
+> Type-safe TypeScript/JavaScript client for reading OLI labels and submitting frontend-compatible onchain attestations.
 
-This package focuses exclusively on **read** scenarios: fetching labels, analytics, and helper summaries. All write helpers have been removed so the surface area is small, predictable, and browser-friendly.
+The SDK now provides:
+
+- `oli.api.*` / `oli.rest.*` for read queries
+- `oli.attest.*` for onchain-first write flows (single + bulk CSV)
+- Dynamic wallet adapter + React hooks for minimal integration work
 
 ## ✨ Highlights
 
 - **Single REST surface** – every helper tunnels through `/labels`, `/attestations`, `/trust-lists`, and `/analytics`, with optional caching and automatic retries.
 - **Dynamic schema loading** – tag definitions & value sets refresh from GitHub so you always validate against the latest standard.
-- **Zero write/dependency footprint** – no signer, node provider, or trust setup required; everything runs against the public REST API.
+- **Onchain-first attest flows** – SDK-parity single + bulk attestation pipelines, including CSV parsing, correction suggestions, and onchain submission helpers.
 - **Helper summaries** – built-in helpers provide display-ready summaries without shipping extra UI-specific code.
 - **Proxy helper** – drop-in middleware injects API keys for browser apps without exposing credentials.
 
@@ -27,6 +31,13 @@ npm install @openlabels/oli-sdk
 # or
 yarn add @openlabels/oli-sdk
 ```
+
+## 🆕 Attestation Docs
+
+- API reference: [`docs/ATTEST_API.md`](docs/ATTEST_API.md)
+- Quickstart + headless usage: [`docs/ATTEST_QUICKSTART.md`](docs/ATTEST_QUICKSTART.md)
+- Dynamic wallet integration: [`docs/ATTEST_DYNAMIC_WALLET.md`](docs/ATTEST_DYNAMIC_WALLET.md)
+- Migration guide: [`docs/ATTEST_MIGRATION.md`](docs/ATTEST_MIGRATION.md)
 
 ## ⚙️ Configuring the Client
 
