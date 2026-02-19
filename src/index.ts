@@ -16,6 +16,18 @@ export { RestClient } from './rest';
 export { AttestClient } from './attest';
 export { createProxyHandler } from './proxy';
 export type { ProxyHandlerOptions } from './proxy';
+export {
+  PROJECTS_URL,
+  fetchProjects,
+  resolveProjectsList,
+  resetProjectsCache,
+  isProjectFieldSimilar,
+  findSimilarProjectMatches,
+  findSimilarProjects,
+  getSmartProjectSuggestions,
+  getProjectValidation,
+  validateProjectId
+} from './projects';
 
 // Types - Common
 export type {
@@ -122,6 +134,13 @@ export type {
   BulkOnchainSubmitResult
 } from './attest';
 export { AttestValidationError } from './attest';
+
+export type {
+  ProjectSimilarityField,
+  ProjectSimilarityMatch,
+  ProjectValidationResult,
+  ResolveProjectsListOptions
+} from './projects';
 
 // Default export
 export { OLIClient as default } from './client';
