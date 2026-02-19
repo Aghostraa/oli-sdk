@@ -16,6 +16,16 @@
       "import": "./dist/attest.entry.mjs",
       "require": "./dist/attest.entry.js"
     },
+    "./projects": {
+      "types": "./dist/projects.entry.d.ts",
+      "import": "./dist/projects.entry.mjs",
+      "require": "./dist/projects.entry.js"
+    },
+    "./attest-ui": {
+      "types": "./dist/attest-ui.entry.d.ts",
+      "import": "./dist/attest-ui.entry.mjs",
+      "require": "./dist/attest-ui.entry.js"
+    },
     "./react": {
       "types": "./dist/react.d.ts",
       "import": "./dist/react.mjs",

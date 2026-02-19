@@ -5,6 +5,8 @@ import type {
   BulkValidationResult,
   CsvParseResult,
   OnchainWalletAdapter,
+  ParseCsvOptions,
+  PrepareSingleOptions,
   PreparedAttestation,
   SingleValidationResult,
   ValidationOptions
@@ -46,7 +48,7 @@ export function useSingleAttest(attest: AttestClient) {
   );
 
   const prepare = useCallback(
-    async (input: AttestationRowInput, options: ValidationOptions = {}) => {
+    async (input: AttestationRowInput, options: PrepareSingleOptions = {}) => {
       return attest.prepareSingleAttestation(input, options);
     },
     [attest]
@@ -69,7 +71,7 @@ export function useSingleAttest(attest: AttestClient) {
   );
 
   const prepareAndSubmit = useCallback(
-    async (input: AttestationRowInput, walletAdapter: OnchainWalletAdapter, options: ValidationOptions = {}) => {
+    async (input: AttestationRowInput, walletAdapter: OnchainWalletAdapter, options: PrepareSingleOptions = {}) => {
       const prepared = await attest.prepareSingleAttestation(input, options);
       return submitPrepared(prepared, walletAdapter);
     },
@@ -95,10 +97,10 @@ export function useBulkCsvAttest(attest: AttestClient) {
   const [submissionState, setSubmissionState] = useAsyncState<BulkOnchainSubmitResult>();
 
   const parseCsv = useCallback(
-    async (csvText: string) => {
+    async (csvText: string, options: ParseCsvOptions = {}) => {
       setCsvState({ loading: true, error: null, result: null });
       try {
-        const result = await attest.parseCsv(csvText);
+        const result = await attest.parseCsv(csvText, options);
         setCsvState({ loading: false, error: null, result });
         return result;
       } catch (error) {
