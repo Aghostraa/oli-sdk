@@ -4,6 +4,7 @@ import { FORM_FIELDS } from '../core/formFields';
 import { parseCaip10 } from '../core/caip';
 import type {
   AttestationDiagnostic,
+  AttestationDiagnostics,
   AttestationFieldValue,
   AttestationModeProfileName,
   AttestationRowInput,
@@ -22,12 +23,17 @@ import type {
   SingleAttestUIOptions
 } from './uiTypes';
 
-const EMPTY_DIAGNOSTICS = {
+const EMPTY_DIAGNOSTICS: AttestationDiagnostics = {
   errors: [],
   warnings: [],
   conversions: [],
   suggestions: []
 };
+
+interface DiagnosticsSnapshot {
+  rows: AttestationRowInput[];
+  diagnostics: AttestationDiagnostics;
+}
 
 function cloneRow(row: AttestationRowInput | undefined): AttestationRowInput {
   return row ? { ...row } : {};
@@ -38,6 +44,152 @@ function cloneRows(rows: AttestationRowInput[] | undefined): AttestationRowInput
     return [];
   }
   return rows.map((row) => ({ ...row }));
+}
+
+function cloneDiagnostics(diagnostics: AttestationDiagnostics): AttestationDiagnostics {
+  return {
+    errors: diagnostics.errors.map((entry) => ({ ...entry })),
+    warnings: diagnostics.warnings.map((entry) => ({ ...entry })),
+    conversions: diagnostics.conversions.map((entry) => ({ ...entry })),
+    suggestions: diagnostics.suggestions.map((entry) => ({ ...entry }))
+  };
+}
+
+function makeEmptyDiagnostics(): AttestationDiagnostics {
+  return {
+    errors: [],
+    warnings: [],
+    conversions: [],
+    suggestions: []
+  };
+}
+
+function serializeFieldValue(value: AttestationFieldValue): string {
+  if (Array.isArray(value)) {
+    return `[${value.map((entry) => serializeFieldValue(entry)).join(',')}]`;
+  }
+
+  if (value === undefined) {
+    return 'undefined';
+  }
+
+  if (value === null) {
+    return 'null';
+  }
+
+  return `${typeof value}:${String(value)}`;
+}
+
+function getRowSignature(row: AttestationRowInput): string {
+  return Object.keys(row)
+    .sort()
+    .map((field) => `${field}=${serializeFieldValue(row[field])}`)
+    .join('|');
+}
+
+function buildRowIndexMap(previousRows: AttestationRowInput[], nextRows: AttestationRowInput[]): Map<number, number> {
+  const previousSignatures = previousRows.map((row) => getRowSignature(row));
+  const nextSignatures = nextRows.map((row) => getRowSignature(row));
+  const indexMap = new Map<number, number>();
+
+  const usedPrevious = new Set<number>();
+  const usedNext = new Set<number>();
+
+  const overlapLength = Math.min(previousSignatures.length, nextSignatures.length);
+  for (let i = 0; i < overlapLength; i += 1) {
+    if (previousSignatures[i] === nextSignatures[i]) {
+      indexMap.set(i, i);
+      usedPrevious.add(i);
+      usedNext.add(i);
+    }
+  }
+
+  const availablePreviousBySignature = new Map<string, number[]>();
+  previousSignatures.forEach((signature, index) => {
+    if (usedPrevious.has(index)) {
+      return;
+    }
+
+    const bucket = availablePreviousBySignature.get(signature);
+    if (bucket) {
+      bucket.push(index);
+    } else {
+      availablePreviousBySignature.set(signature, [index]);
+    }
+  });
+
+  nextSignatures.forEach((signature, nextIndex) => {
+    if (usedNext.has(nextIndex)) {
+      return;
+    }
+
+    const bucket = availablePreviousBySignature.get(signature);
+    if (!bucket || bucket.length === 0) {
+      return;
+    }
+
+    const previousIndex = bucket.shift();
+    if (typeof previousIndex !== 'number') {
+      return;
+    }
+
+    indexMap.set(previousIndex, nextIndex);
+    usedPrevious.add(previousIndex);
+    usedNext.add(nextIndex);
+  });
+
+  return indexMap;
+}
+
+function remapDiagnosticsByRows(snapshot: DiagnosticsSnapshot | null, rows: AttestationRowInput[]): AttestationDiagnostics {
+  if (!snapshot) {
+    return EMPTY_DIAGNOSTICS;
+  }
+
+  const remapped = makeEmptyDiagnostics();
+  const indexMap = buildRowIndexMap(snapshot.rows, rows);
+
+  const remapList = (list: AttestationDiagnostic[]): AttestationDiagnostic[] => {
+    const result: AttestationDiagnostic[] = [];
+
+    list.forEach((diagnostic) => {
+      if (typeof diagnostic.row !== 'number') {
+        result.push({ ...diagnostic });
+        return;
+      }
+
+      const nextRowIndex = indexMap.get(diagnostic.row);
+      if (typeof nextRowIndex !== 'number') {
+        return;
+      }
+
+      result.push({
+        ...diagnostic,
+        row: nextRowIndex
+      });
+    });
+
+    return result;
+  };
+
+  remapped.errors = remapList(snapshot.diagnostics.errors);
+  remapped.warnings = remapList(snapshot.diagnostics.warnings);
+  remapped.conversions = remapList(snapshot.diagnostics.conversions);
+  remapped.suggestions = remapList(snapshot.diagnostics.suggestions);
+
+  return remapped;
+}
+
+function filterDiagnostics(
+  diagnostics: AttestationDiagnostics,
+  matcher: (diagnostic: AttestationDiagnostic) => boolean
+): AttestationDiagnostics {
+  return {
+    errors: diagnostics.errors.filter(matcher),
+    warnings: diagnostics.warnings.filter(matcher),
+    conversions: diagnostics.conversions.filter(matcher),
+    suggestions: diagnostics.suggestions.filter(matcher)
+  };
 }
 
 function normalizeFieldFilters(includeFields: string[] | undefined, excludeFields: string[] | undefined) {
@@ -251,7 +403,7 @@ export function useSingleAttestUI(attest: AttestClient, options: SingleAttestUIO
 
 export function useBulkCsvAttestUI(attest: AttestClient, options: BulkCsvAttestUIOptions = {}): BulkCsvAttestUIController {
   const [mode, setMode] = useState<AttestationModeProfileName>(options.mode ?? 'advancedProfile');
-  const [rows, setRows] = useState<AttestationRowInput[]>(() => cloneRows(options.initialRows));
+  const [rowsState, setRowsState] = useState<AttestationRowInput[]>(() => cloneRows(options.initialRows));
   const [columns, setColumns] = useState<string[]>(() => {
     if (Array.isArray(options.initialColumns) && options.initialColumns.length > 0) {
       return [...options.initialColumns];
@@ -259,12 +411,19 @@ export function useBulkCsvAttestUI(attest: AttestClient, options: BulkCsvAttestU
 
     return getVisibleFields(mode, options.includeFields, options.excludeFields).map((field) => field.id);
   });
+  const [diagnosticsSnapshot, setDiagnosticsSnapshot] = useState<DiagnosticsSnapshot | null>(null);
 
   const bulk = useBulkCsvAttest(attest);
-  const diagnostics = bulk.validation.result?.diagnostics ?? bulk.csv.result?.diagnostics ?? EMPTY_DIAGNOSTICS;
+  const rows = rowsState.length > 0 ? rowsState : [{}];
+  const diagnostics = useMemo(() => remapDiagnosticsByRows(diagnosticsSnapshot, rows), [diagnosticsSnapshot, rows]);
+
+  const setRows = useCallback((nextRows: AttestationRowInput[]) => {
+    const cloned = cloneRows(nextRows);
+    setRowsState(cloned.length > 0 ? cloned : [{}]);
+  }, []);
 
   const setCell = useCallback((rowIndex: number, field: string, value: AttestationFieldValue) => {
-    setRows((currentRows) => {
+    setRowsState((currentRows) => {
       if (rowIndex < 0 || rowIndex >= currentRows.length) {
         return currentRows;
       }
@@ -289,7 +448,7 @@ export function useBulkCsvAttestUI(attest: AttestClient, options: BulkCsvAttestU
   }, []);
 
   const addRow = useCallback((nextRow: AttestationRowInput = {}) => {
-    setRows((currentRows) => {
+    setRowsState((currentRows) => {
       if (currentRows.length >= 50) {
         return currentRows;
       }
@@ -298,7 +457,7 @@ export function useBulkCsvAttestUI(attest: AttestClient, options: BulkCsvAttestU
   }, []);
 
   const removeRow = useCallback((rowIndex: number) => {
-    setRows((currentRows) => {
+    setRowsState((currentRows) => {
       if (currentRows.length <= 1) {
         return [{}];
       }
@@ -316,6 +475,10 @@ export function useBulkCsvAttestUI(attest: AttestClient, options: BulkCsvAttestU
       });
 
       setRows(cloneRows(result.rows));
+      setDiagnosticsSnapshot({
+        rows: cloneRows(result.rows),
+        diagnostics: cloneDiagnostics(result.diagnostics)
+      });
       if (result.columns.length > 0) {
         setColumns([...result.columns]);
       }
@@ -336,6 +499,10 @@ export function useBulkCsvAttestUI(attest: AttestClient, options: BulkCsvAttestU
       });
 
       setRows(cloneRows(result.rows));
+      setDiagnosticsSnapshot({
+        rows: cloneRows(result.rows),
+        diagnostics: cloneDiagnostics(result.diagnostics)
+      });
       options.onValidated?.(result);
       return result;
     },
@@ -344,7 +511,7 @@ export function useBulkCsvAttestUI(attest: AttestClient, options: BulkCsvAttestU
 
   const applySuggestion = useCallback(
     (rowIndex: number, field: string, suggestion: string) => {
-      setRows((currentRows) => {
+      setRowsState((currentRows) => {
         if (rowIndex < 0 || rowIndex >= currentRows.length) {
           return currentRows;
         }
@@ -374,6 +541,25 @@ export function useBulkCsvAttestUI(attest: AttestClient, options: BulkCsvAttestU
       applySuggestion(rowIndex, field, suggestion);
     },
     [applySuggestion]
+  );
+
+  const getRowDiagnostics = useCallback(
+    (rowIndex: number): AttestationDiagnostics =>
+      filterDiagnostics(diagnostics, (diagnostic) => diagnostic.row === rowIndex),
+    [diagnostics]
+  );
+
+  const getFieldDiagnostics = useCallback(
+    (rowIndex: number, field: string): AttestationDiagnostics =>
+      filterDiagnostics(diagnostics, (diagnostic) => diagnostic.row === rowIndex && diagnostic.field === field),
+    [diagnostics]
+  );
+
+  const getFieldError = useCallback(
+    (rowIndex: number, field: string): AttestationDiagnostic | undefined => {
+      return getFieldDiagnostics(rowIndex, field).errors[0];
+    },
+    [getFieldDiagnostics]
   );
 
   const submit = useCallback(
@@ -414,7 +600,8 @@ export function useBulkCsvAttestUI(attest: AttestClient, options: BulkCsvAttestU
   const reset = useCallback(
     (nextRows?: AttestationRowInput[]) => {
       const resolvedRows = cloneRows(nextRows ?? options.initialRows);
-      setRows(resolvedRows.length > 0 ? resolvedRows : [{}]);
+      setRowsState(resolvedRows.length > 0 ? resolvedRows : [{}]);
+      setDiagnosticsSnapshot(null);
 
       if (Array.isArray(options.initialColumns) && options.initialColumns.length > 0) {
         setColumns([...options.initialColumns]);
@@ -442,6 +629,9 @@ export function useBulkCsvAttestUI(attest: AttestClient, options: BulkCsvAttestU
       removeRow,
       parseCsvText,
       validate,
+      getRowDiagnostics,
+      getFieldDiagnostics,
+      getFieldError,
       applySuggestion,
       applyDiagnosticSuggestion,
       submit,
@@ -460,6 +650,9 @@ export function useBulkCsvAttestUI(attest: AttestClient, options: BulkCsvAttestU
       removeRow,
       parseCsvText,
       validate,
+      getRowDiagnostics,
+      getFieldDiagnostics,
+      getFieldError,
       applySuggestion,
       applyDiagnosticSuggestion,
       submit,

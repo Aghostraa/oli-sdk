@@ -1,5 +1,5 @@
 import { createElement, useState } from 'react';
-import type { AttestationDiagnostic } from '../types';
+import type { AttestationDiagnostic, AttestationDiagnostics } from '../types';
 import type {
   BulkCsvCellRenderContext,
   BulkCsvTableLabels,
@@ -105,6 +105,36 @@ function collectSuggestions(
       return;
     }
 
+    if (typeof diagnostic.suggestion === 'string' && diagnostic.suggestion) {
+      bag.add(diagnostic.suggestion);
+    }
+
+    diagnostic.suggestions?.forEach((suggestion) => {
+      if (suggestion) {
+        bag.add(suggestion);
+      }
+    });
+  });
+
+  return Array.from(bag).slice(0, 5);
+}
+
+function collectSuggestionsFromScopedDiagnostics(diagnostics: Pick<AttestationDiagnostics, 'errors' | 'suggestions'>): string[] {
+  const bag = new Set<string>();
+
+  diagnostics.suggestions.forEach((diagnostic) => {
+    if (typeof diagnostic.suggestion === 'string' && diagnostic.suggestion) {
+      bag.add(diagnostic.suggestion);
+    }
+
+    diagnostic.suggestions?.forEach((suggestion) => {
+      if (suggestion) {
+        bag.add(suggestion);
+      }
+    });
+  });
+
+  diagnostics.errors.forEach((diagnostic) => {
     if (typeof diagnostic.suggestion === 'string' && diagnostic.suggestion) {
       bag.add(diagnostic.suggestion);
     }
@@ -289,8 +319,9 @@ export function BulkCsvTable(props: BulkCsvTableProps): unknown {
   const tableRows = rows.map((row, rowIndex) => {
     const cells = columns.map((field) => {
       const value = toTextValue(row[field]);
-      const error = getFieldError(props.controller.diagnostics, rowIndex, field);
-      const suggestions = collectSuggestions(props.controller.diagnostics, rowIndex, field);
+      const fieldDiagnostics = props.controller.getFieldDiagnostics(rowIndex, field);
+      const error = props.controller.getFieldError(rowIndex, field)?.message;
+      const suggestions = collectSuggestionsFromScopedDiagnostics(fieldDiagnostics);
 
       const context: BulkCsvCellRenderContext = {
         rowIndex,

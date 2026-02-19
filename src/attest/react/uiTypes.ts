@@ -1,6 +1,7 @@
 import type { AttestClient } from '../api';
 import type { FormFieldDefinition } from '../core/formFields';
 import type {
+  AttestationDiagnostics,
   AttestationDiagnostic,
   AttestationFieldValue,
   AttestationModeProfileName,
@@ -47,12 +48,7 @@ export interface SingleAttestUIController {
   mode: AttestationModeProfileName;
   row: AttestationRowInput;
   fields: FormFieldDefinition[];
-  diagnostics: {
-    errors: AttestationDiagnostic[];
-    warnings: AttestationDiagnostic[];
-    conversions: AttestationDiagnostic[];
-    suggestions: AttestationDiagnostic[];
-  };
+  diagnostics: AttestationDiagnostics;
   validation: {
     loading: boolean;
     error: Error | null;
@@ -78,12 +74,7 @@ export interface BulkCsvAttestUIController {
   mode: AttestationModeProfileName;
   rows: AttestationRowInput[];
   columns: string[];
-  diagnostics: {
-    errors: AttestationDiagnostic[];
-    warnings: AttestationDiagnostic[];
-    conversions: AttestationDiagnostic[];
-    suggestions: AttestationDiagnostic[];
-  };
+  diagnostics: AttestationDiagnostics;
   csv: {
     loading: boolean;
     error: Error | null;
@@ -107,6 +98,9 @@ export interface BulkCsvAttestUIController {
   removeRow: (rowIndex: number) => void;
   parseCsvText: (csvText: string, options?: Omit<ParseCsvOptions, 'mode'>) => Promise<CsvParseResult>;
   validate: (options?: Omit<ValidationOptions, 'mode'>) => Promise<BulkValidationResult>;
+  getRowDiagnostics: (rowIndex: number) => AttestationDiagnostics;
+  getFieldDiagnostics: (rowIndex: number, field: string) => AttestationDiagnostics;
+  getFieldError: (rowIndex: number, field: string) => AttestationDiagnostic | undefined;
   applySuggestion: (rowIndex: number, field: string, suggestion: string) => void;
   applyDiagnosticSuggestion: (diagnostic: AttestationDiagnostic, fallbackSuggestion?: string) => void;
   submit: (params?: {
