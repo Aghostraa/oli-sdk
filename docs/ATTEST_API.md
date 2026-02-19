@@ -21,6 +21,14 @@ You can also import attestation-only APIs directly:
 import { AttestClient, createDynamicWalletAdapter } from '@openlabels/oli-sdk/attest';
 ```
 
+Additional subpaths:
+
+- `@openlabels/oli-sdk/attest-ui`
+  - configurable React UI modules (`SingleAttestModule`, `BulkCsvAttestModule`)
+  - default unstyled primitives (`SingleAttestForm`, `BulkCsvTable`)
+- `@openlabels/oli-sdk/projects`
+  - project lookup/similarity helpers used by frontend parity validation
+
 ## Mode Profiles
 
 - `simpleProfile`
@@ -44,6 +52,43 @@ const fixedRow = oli.attest.applySuggestion(parsed.rows[0], 'usage_category', 'd
 const bulkValidation = await oli.attest.validateBulk(parsed.rows, { mode: 'advancedProfile' });
 const tx = await oli.attest.submitBulkOnchain(bulkValidation.validRows, walletAdapter);
 ```
+
+## Configurable UI Modules
+
+```ts
+import { useSingleAttestUI, useBulkCsvAttestUI } from '@openlabels/oli-sdk/attest-ui';
+```
+
+- `useSingleAttestUI(attestClient, options)`
+- `useBulkCsvAttestUI(attestClient, options)`
+- render-prop wrappers:
+  - `SingleAttestModule`
+  - `BulkCsvAttestModule`
+- unstyled default components:
+  - `SingleAttestForm`
+  - `BulkCsvTable`
+
+These APIs are style-agnostic: host apps control markup/classes via render callbacks and className maps.
+
+## Projects Module
+
+```ts
+import {
+  fetchProjects,
+  validateProjectId,
+  getSmartProjectSuggestions,
+  findSimilarProjectMatches
+} from '@openlabels/oli-sdk/projects';
+```
+
+Key APIs:
+
+- `fetchProjects()`
+- `resolveProjectsList()`
+- `validateProjectId(projectId, projects)`
+- `getSmartProjectSuggestions(value, projects)`
+- `findSimilarProjects(value, projects)`
+- `findSimilarProjectMatches(value, fieldType, projects)`
 
 ## Diagnostics Shape
 

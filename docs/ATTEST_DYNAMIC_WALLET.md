@@ -46,6 +46,9 @@ if (validated.valid) {
 
 ## Environment Variables
 
+- `NEXT_PUBLIC_DYNAMIC_ENVIRONMENT_ID`
+  - Required by Dynamic SDK provider initialization in frontend apps.
+
 - `OLI_COINBASE_PAYMASTER_URL`
   - Preferred SDK-level paymaster URL override.
   - Works in Node/server and in bundlers that inline `process.env`.

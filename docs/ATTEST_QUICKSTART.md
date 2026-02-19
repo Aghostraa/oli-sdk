@@ -75,3 +75,21 @@ for (const suggestion of validation.diagnostics.suggestions) {
   }
 }
 ```
+
+## Configurable UI Modules
+
+```ts
+import { useSingleAttestUI, useBulkCsvAttestUI } from '@openlabels/oli-sdk/attest-ui';
+
+const single = useSingleAttestUI(oli.attest, {
+  mode: 'simpleProfile',
+  walletAdapter
+});
+
+const bulk = useBulkCsvAttestUI(oli.attest, {
+  mode: 'advancedProfile',
+  walletAdapter
+});
+```
+
+Use the controller APIs directly, or render with `SingleAttestForm` / `BulkCsvTable` and override styles/renderers.

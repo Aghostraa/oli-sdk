@@ -2,6 +2,10 @@
 
 ## Runtime (SDK / App)
 
+- `NEXT_PUBLIC_DYNAMIC_ENVIRONMENT_ID`
+  - Required by Dynamic React provider setup when using Dynamic wallet auth/connect flows.
+  - Frontend-only variable (do not rely on this in server-only contexts).
+
 - `OLI_COINBASE_PAYMASTER_URL`
   - SDK-level override for Coinbase paymaster endpoint.
   - Recommended when using `@openlabels/oli-sdk` across server/browser builds.

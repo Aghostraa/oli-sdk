@@ -40,6 +40,24 @@ const adapter = createDynamicWalletAdapter(primaryWallet);
 await oli.attest.submitBulkOnchain(validated.validRows, adapter);
 ```
 
+## UI Migration Option
+
+If you currently maintain custom single/bulk React screens, move to:
+
+```ts
+import { useSingleAttestUI, useBulkCsvAttestUI } from '@openlabels/oli-sdk/attest-ui';
+```
+
+These controllers keep the same write/validation behavior while letting you keep full control over styling and rendered markup.
+
+## Project Similarity Migration Option
+
+If you have custom project typo/similarity code in your app, move to:
+
+```ts
+import { validateProjectId, findSimilarProjectMatches } from '@openlabels/oli-sdk/projects';
+```
+
 ## What You Can Delete From App Code
 
 - Custom Levenshtein/fuzzy header mapping for attestation CSVs
