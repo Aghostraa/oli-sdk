@@ -70,7 +70,7 @@ class DynamicWalletAdapter implements OnchainWalletAdapter {
     throw new Error('Dynamic wallet client does not expose an RPC request interface.');
   }
 
-  private resolvePaymasterUrl(context: OnchainSubmitContext): string {
+  private resolvePaymasterUrl(context: OnchainSubmitContext): string | undefined {
     return context.paymasterUrl ?? this.options.paymasterUrl ?? getDefaultCoinbasePaymasterUrl();
   }
 
@@ -291,9 +291,16 @@ class DynamicWalletAdapter implements OnchainWalletAdapter {
     };
 
     if (sponsored) {
+      const paymasterUrl = this.resolvePaymasterUrl(context);
+      if (!paymasterUrl) {
+        throw new Error(
+          'Sponsorship requested but no paymaster URL is configured. ' +
+          'Set OLI_COINBASE_PAYMASTER_URL in your environment or pass paymasterUrl in the adapter/context options.'
+        );
+      }
       writeParams.capabilities = {
         paymasterService: {
-          url: this.resolvePaymasterUrl(context)
+          url: paymasterUrl
         }
       };
     }
@@ -322,6 +329,14 @@ class DynamicWalletAdapter implements OnchainWalletAdapter {
       return this.executeWrite(requestParams, context, true);
     }
 
+    const paymasterUrl = this.resolvePaymasterUrl(context);
+    if (!paymasterUrl) {
+      throw new Error(
+        'Sponsorship requested but no paymaster URL is configured. ' +
+        'Set OLI_COINBASE_PAYMASTER_URL in your environment or pass paymasterUrl in the adapter/context options.'
+      );
+    }
+
     const encodedData = encodeFunctionData({
       abi: EAS_ATTEST_ABI,
       functionName: requestParams.functionName,
@@ -338,7 +353,7 @@ class DynamicWalletAdapter implements OnchainWalletAdapter {
       ],
       capabilities: {
         paymasterService: {
-          url: this.resolvePaymasterUrl(context)
+          url: paymasterUrl
         }
       }
     });

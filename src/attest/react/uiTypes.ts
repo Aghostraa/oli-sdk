@@ -37,6 +37,7 @@ export interface BulkCsvAttestUIOptions {
   walletAdapter?: OnchainWalletAdapter;
   includeFields?: string[];
   excludeFields?: string[];
+  allowedFields?: string[];
   parseOptions?: Omit<ParseCsvOptions, 'mode'>;
   validationOptions?: Omit<ValidationOptions, 'mode'>;
   onParsed?: (result: CsvParseResult) => void;

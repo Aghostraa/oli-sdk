@@ -32,6 +32,7 @@ export interface ValidationOptions {
   projects?: ProjectRecord[];
   fetchProjects?: () => Promise<ProjectRecord[]>;
   maxRows?: number;
+  allowedFields?: string[];
 }
 
 export interface PrepareSingleOptions {
@@ -47,6 +48,7 @@ export interface ParseCsvOptions {
   mode?: AttestationMode;
   projects?: ProjectRecord[];
   fetchProjects?: () => Promise<ProjectRecord[]>;
+  allowedFields?: string[];
 }
 
 export interface AttestationDiagnostic {

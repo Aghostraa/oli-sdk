@@ -6,7 +6,7 @@ import type {
   SingleValidationResult,
   ValidationOptions
 } from '../types';
-import { FORM_FIELDS } from '../core/formFields';
+import { FORM_FIELDS, REQUIRED_FIELD_IDS } from '../core/formFields';
 import { resolveModeProfile } from '../core/profiles';
 import { parseCaip10 } from '../core/caip';
 import { createDiagnostics, addConversion, addError, addSuggestion, addWarning, mergeDiagnostics } from './diagnostics';
@@ -45,6 +45,35 @@ function isEmptyValue(value: unknown): boolean {
 
 function cloneRow(row: AttestationRowInput): AttestationRowInput {
   return { ...row };
+}
+
+function normalizeAllowedFields(allowedFields: string[] | undefined): Set<string> | null {
+  if (!Array.isArray(allowedFields) || allowedFields.length === 0) {
+    return null;
+  }
+
+  const normalized = new Set(
+    allowedFields
+      .map((field) => field.trim())
+      .filter((field) => field.length > 0)
+  );
+
+  REQUIRED_FIELD_IDS.forEach((field) => normalized.add(field));
+  return normalized;
+}
+
+function sanitizeRowByAllowedFields(row: AttestationRowInput, allowedFields: Set<string> | null): AttestationRowInput {
+  if (!allowedFields) {
+    return row;
+  }
+
+  Object.keys(row).forEach((fieldId) => {
+    if (!allowedFields.has(fieldId)) {
+      delete row[fieldId];
+    }
+  });
+
+  return row;
 }
 
 function isBooleanField(fieldId: string): boolean {
@@ -319,10 +348,11 @@ async function validateRow(
   options: {
     mode: ReturnType<typeof resolveModeProfile>;
     projects: ProjectRecord[];
+    allowedFields: Set<string> | null;
     rowIndex?: number;
   }
 ): Promise<AttestationRowInput> {
-  const row = cloneRow(rowInput);
+  const row = sanitizeRowByAllowedFields(cloneRow(rowInput), options.allowedFields);
   const { mode, projects, rowIndex } = options;
 
   applyCaipNormalization(row, diagnostics, rowIndex);
@@ -367,10 +397,12 @@ export async function validateSingle(input: AttestationRowInput, options: Valida
   const diagnostics = createDiagnostics();
   const mode = resolveModeProfile(options.mode);
   const projects = await resolveProjectsList({ projects: options.projects, fetchProjects: options.fetchProjects });
+  const allowedFields = normalizeAllowedFields(options.allowedFields);
 
   const row = await validateRow(input, diagnostics, {
     mode,
-    projects
+    projects,
+    allowedFields
   });
 
   return {
@@ -392,6 +424,7 @@ export async function validateBulk(rows: AttestationRowInput[], options: Validat
   const diagnostics = createDiagnostics();
   const mode = resolveModeProfile(options.mode);
   const projects = await resolveProjectsList({ projects: options.projects, fetchProjects: options.fetchProjects });
+  const allowedFields = normalizeAllowedFields(options.allowedFields);
 
   if (!Array.isArray(rows) || rows.length === 0) {
     addError(diagnostics, 'BULK_EMPTY', 'At least one row is required for bulk attestation.');
@@ -420,6 +453,7 @@ export async function validateBulk(rows: AttestationRowInput[], options: Validat
     const normalizedRow = await validateRow(row, rowDiagnostics, {
       mode,
       projects,
+      allowedFields,
       rowIndex: index
     });
 

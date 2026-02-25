@@ -1,5 +1,5 @@
 import type { AttestationRowInput, CsvParseResult, ParseCsvOptions } from '../types';
-import { FORM_FIELDS } from '../core/formFields';
+import { FORM_FIELDS, REQUIRED_FIELD_IDS } from '../core/formFields';
 import { VALID_CATEGORY_IDS } from '../core/categories';
 import { parseCaip10 } from '../core/caip';
 import { convertChainId } from './chain';
@@ -104,8 +104,24 @@ function cleanValue(value: string, fieldId?: string): string {
   return cleaned;
 }
 
+function normalizeAllowedFields(allowedFields: string[] | undefined): Set<string> | null {
+  if (!Array.isArray(allowedFields) || allowedFields.length === 0) {
+    return null;
+  }
+
+  const normalized = new Set(
+    allowedFields
+      .map((field) => field.trim())
+      .filter((field) => field.length > 0)
+  );
+
+  REQUIRED_FIELD_IDS.forEach((field) => normalized.add(field));
+  return normalized;
+}
+
 export async function parseCsv(csvText: string, options: ParseCsvOptions = {}): Promise<CsvParseResult> {
   const diagnostics = createDiagnostics();
+  const allowedFields = normalizeAllowedFields(options.allowedFields);
   const lines = csvText.split('\n').map((line) => line.trim());
 
   if (lines.length < 2 || lines.slice(1).every((line) => !line)) {
@@ -129,13 +145,18 @@ export async function parseCsv(csvText: string, options: ParseCsvOptions = {}): 
     headerMap[header] = fieldId;
 
     if (!fieldId) {
-      if (header.trim()) {
+      if (!allowedFields && header.trim()) {
         addWarning(diagnostics, 'CSV_HEADER_IGNORED', `Column "${header}" was not recognized and will be ignored.`, {
           row: 0,
           field: header,
           metadata: { headerIndex }
         });
       }
+      return;
+    }
+
+    if (allowedFields && !allowedFields.has(fieldId)) {
+      headerMap[header] = null;
       return;
     }
 
@@ -157,7 +178,10 @@ export async function parseCsv(csvText: string, options: ParseCsvOptions = {}): 
     return { rows: [], columns, headerMap, diagnostics };
   }
 
-  const requiredFields = FORM_FIELDS.filter((field) => field.required).map((field) => field.id);
+  const requiredFields = FORM_FIELDS
+    .filter((field) => field.required)
+    .map((field) => field.id)
+    .filter((field) => (allowedFields ? allowedFields.has(field) : true));
   const missingRequired = requiredFields.filter((field) => !columns.includes(field));
   if (missingRequired.length > 0) {
     addError(

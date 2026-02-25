@@ -43,9 +43,6 @@ export function getSupportedAttestationNetworks(): AttestationNetworkConfig[] {
 
 export const BASE_CHAIN_IDS = [8453, 84532] as const;
 
-export const DEFAULT_COINBASE_PAYMASTER_URL =
-  'https://api.developer.coinbase.com/rpc/v1/base/hyKHUTPE7kd0VnvFqYsMiAUjvg1wshR3';
-
 function readEnvValue(key: string): string | undefined {
   if (typeof process === 'undefined' || !process.env) {
     return undefined;
@@ -60,10 +57,9 @@ function readEnvValue(key: string): string | undefined {
   return trimmed === '' ? undefined : trimmed;
 }
 
-export function getDefaultCoinbasePaymasterUrl(): string {
+export function getDefaultCoinbasePaymasterUrl(): string | undefined {
   return (
     readEnvValue('OLI_COINBASE_PAYMASTER_URL') ??
-    readEnvValue('NEXT_PUBLIC_COINBASE_PAYMASTER_URL') ??
-    DEFAULT_COINBASE_PAYMASTER_URL
+    readEnvValue('NEXT_PUBLIC_COINBASE_PAYMASTER_URL')
   );
 }

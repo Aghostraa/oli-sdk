@@ -26,6 +26,11 @@
       "import": "./dist/attest-ui.entry.mjs",
       "require": "./dist/attest-ui.entry.js"
     },
+    "./contributions": {
+      "types": "./dist/contributions.entry.d.ts",
+      "import": "./dist/contributions.entry.mjs",
+      "require": "./dist/contributions.entry.js"
+    },
     "./react": {
       "types": "./dist/react.d.ts",
       "import": "./dist/react.mjs",

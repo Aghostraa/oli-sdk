@@ -1,6 +1,6 @@
 import { useCallback, useMemo, useState } from 'react';
 import type { AttestClient } from '../api';
-import { FORM_FIELDS } from '../core/formFields';
+import { FORM_FIELDS, REQUIRED_FIELD_IDS } from '../core/formFields';
 import { parseCaip10 } from '../core/caip';
 import type {
   AttestationDiagnostic,
@@ -87,6 +87,19 @@ function getRowSignature(row: AttestationRowInput): string {
     .join('|');
 }
 
+function getChangedFields(previousRow: AttestationRowInput, nextRow: AttestationRowInput): Set<string> {
+  const changedFields = new Set<string>();
+  const allFields = new Set<string>([...Object.keys(previousRow), ...Object.keys(nextRow)]);
+
+  allFields.forEach((field) => {
+    if (serializeFieldValue(previousRow[field]) !== serializeFieldValue(nextRow[field])) {
+      changedFields.add(field);
+    }
+  });
+
+  return changedFields;
+}
+
 function buildRowIndexMap(previousRows: AttestationRowInput[], nextRows: AttestationRowInput[]): Map<number, number> {
   const previousSignatures = previousRows.map((row) => getRowSignature(row));
   const nextSignatures = nextRows.map((row) => getRowSignature(row));
@@ -141,13 +154,48 @@ function buildRowIndexMap(previousRows: AttestationRowInput[], nextRows: Attesta
   return indexMap;
 }
 
+interface RelaxedRowMapEntry {
+  nextRowIndex: number;
+  changedFields: Set<string>;
+}
+
+function buildRelaxedRowIndexMap(
+  previousRows: AttestationRowInput[],
+  nextRows: AttestationRowInput[],
+  strictIndexMap: Map<number, number>
+): Map<number, RelaxedRowMapEntry> {
+  const relaxedMap = new Map<number, RelaxedRowMapEntry>();
+  const usedPrevious = new Set<number>(strictIndexMap.keys());
+  const usedNext = new Set<number>(strictIndexMap.values());
+  const overlapLength = Math.min(previousRows.length, nextRows.length);
+
+  for (let index = 0; index < overlapLength; index += 1) {
+    if (usedPrevious.has(index) || usedNext.has(index)) {
+      continue;
+    }
+
+    const changedFields = getChangedFields(previousRows[index], nextRows[index]);
+    if (changedFields.size === 0) {
+      continue;
+    }
+
+    relaxedMap.set(index, {
+      nextRowIndex: index,
+      changedFields
+    });
+  }
+
+  return relaxedMap;
+}
+
 function remapDiagnosticsByRows(snapshot: DiagnosticsSnapshot | null, rows: AttestationRowInput[]): AttestationDiagnostics {
   if (!snapshot) {
     return EMPTY_DIAGNOSTICS;
   }
 
   const remapped = makeEmptyDiagnostics();
-  const indexMap = buildRowIndexMap(snapshot.rows, rows);
+  const strictIndexMap = buildRowIndexMap(snapshot.rows, rows);
+  const relaxedIndexMap = buildRelaxedRowIndexMap(snapshot.rows, rows, strictIndexMap);
 
   const remapList = (list: AttestationDiagnostic[]): AttestationDiagnostic[] => {
     const result: AttestationDiagnostic[] = [];
@@ -158,14 +206,27 @@ function remapDiagnosticsByRows(snapshot: DiagnosticsSnapshot | null, rows: Atte
         return;
       }
 
-      const nextRowIndex = indexMap.get(diagnostic.row);
-      if (typeof nextRowIndex !== 'number') {
+      const strictNextRowIndex = strictIndexMap.get(diagnostic.row);
+      if (typeof strictNextRowIndex === 'number') {
+        result.push({
+          ...diagnostic,
+          row: strictNextRowIndex
+        });
+        return;
+      }
+
+      const relaxedEntry = relaxedIndexMap.get(diagnostic.row);
+      if (!relaxedEntry) {
+        return;
+      }
+
+      if (!diagnostic.field || relaxedEntry.changedFields.has(diagnostic.field)) {
         return;
       }
 
       result.push({
         ...diagnostic,
-        row: nextRowIndex
+        row: relaxedEntry.nextRowIndex
       });
     });
 
@@ -216,6 +277,62 @@ function getVisibleFields(mode: AttestationModeProfileName, includeFields?: stri
 
     return true;
   });
+}
+
+function normalizeAllowedFields(allowedFields: string[] | undefined): Set<string> | null {
+  if (!Array.isArray(allowedFields) || allowedFields.length === 0) {
+    return null;
+  }
+
+  const normalized = new Set(
+    allowedFields
+      .map((field) => field.trim())
+      .filter((field) => field.length > 0)
+  );
+
+  REQUIRED_FIELD_IDS.forEach((field) => normalized.add(field));
+  return normalized;
+}
+
+function constrainColumns(columns: string[], allowedFields: Set<string> | null): string[] {
+  if (!allowedFields) {
+    return [...columns];
+  }
+
+  const filtered = columns.filter((column) => allowedFields.has(column));
+  if (filtered.length > 0) {
+    return filtered;
+  }
+
+  return Array.from(allowedFields);
+}
+
+function sanitizeRowForAllowedFields(
+  row: AttestationRowInput,
+  allowedFields: Set<string> | null
+): AttestationRowInput {
+  if (!allowedFields) {
+    return { ...row };
+  }
+
+  const next: AttestationRowInput = {};
+  Object.entries(row).forEach(([field, value]) => {
+    if (allowedFields.has(field)) {
+      next[field] = value;
+    }
+  });
+  return next;
+}
+
+function sanitizeRowsForAllowedFields(
+  rows: AttestationRowInput[] | undefined,
+  allowedFields: Set<string> | null
+): AttestationRowInput[] {
+  if (!Array.isArray(rows)) {
+    return [];
+  }
+
+  return rows.map((row) => sanitizeRowForAllowedFields(row, allowedFields));
 }
 
 function isPreparedAttestationRow(row: unknown): row is PreparedAttestation {
@@ -403,13 +520,17 @@ export function useSingleAttestUI(attest: AttestClient, options: SingleAttestUIO
 
 export function useBulkCsvAttestUI(attest: AttestClient, options: BulkCsvAttestUIOptions = {}): BulkCsvAttestUIController {
   const [mode, setMode] = useState<AttestationModeProfileName>(options.mode ?? 'advancedProfile');
+  const allowedFields = normalizeAllowedFields(options.allowedFields);
   const [rowsState, setRowsState] = useState<AttestationRowInput[]>(() => cloneRows(options.initialRows));
   const [columns, setColumns] = useState<string[]>(() => {
     if (Array.isArray(options.initialColumns) && options.initialColumns.length > 0) {
-      return [...options.initialColumns];
+      return constrainColumns(options.initialColumns, allowedFields);
     }
 
-    return getVisibleFields(mode, options.includeFields, options.excludeFields).map((field) => field.id);
+    return constrainColumns(
+      getVisibleFields(mode, options.includeFields, options.excludeFields).map((field) => field.id),
+      allowedFields
+    );
   });
   const [diagnosticsSnapshot, setDiagnosticsSnapshot] = useState<DiagnosticsSnapshot | null>(null);
 
@@ -418,11 +539,15 @@ export function useBulkCsvAttestUI(attest: AttestClient, options: BulkCsvAttestU
   const diagnostics = useMemo(() => remapDiagnosticsByRows(diagnosticsSnapshot, rows), [diagnosticsSnapshot, rows]);
 
   const setRows = useCallback((nextRows: AttestationRowInput[]) => {
-    const cloned = cloneRows(nextRows);
+    const cloned = sanitizeRowsForAllowedFields(cloneRows(nextRows), allowedFields);
     setRowsState(cloned.length > 0 ? cloned : [{}]);
-  }, []);
+  }, [allowedFields]);
 
   const setCell = useCallback((rowIndex: number, field: string, value: AttestationFieldValue) => {
+    if (allowedFields && !allowedFields.has(field)) {
+      return;
+    }
+
     setRowsState((currentRows) => {
       if (rowIndex < 0 || rowIndex >= currentRows.length) {
         return currentRows;
@@ -445,16 +570,16 @@ export function useBulkCsvAttestUI(attest: AttestClient, options: BulkCsvAttestU
         return next;
       });
     });
-  }, []);
+  }, [allowedFields]);
 
   const addRow = useCallback((nextRow: AttestationRowInput = {}) => {
     setRowsState((currentRows) => {
       if (currentRows.length >= 50) {
         return currentRows;
       }
-      return [...currentRows, cloneRow(nextRow)];
+      return [...currentRows, sanitizeRowForAllowedFields(cloneRow(nextRow), allowedFields)];
     });
-  }, []);
+  }, [allowedFields]);
 
   const removeRow = useCallback((rowIndex: number) => {
     setRowsState((currentRows) => {
@@ -468,49 +593,68 @@ export function useBulkCsvAttestUI(attest: AttestClient, options: BulkCsvAttestU
 
   const parseCsvText = useCallback(
     async (csvText: string, overrideOptions: Omit<import('../types').ParseCsvOptions, 'mode'> = {}) => {
-      const result = await bulk.parseCsv(csvText, {
+      const parseOptions = {
         ...options.parseOptions,
         ...overrideOptions,
         mode
-      });
+      };
 
-      setRows(cloneRows(result.rows));
+      if (allowedFields) {
+        parseOptions.allowedFields = Array.from(allowedFields);
+      }
+
+      const result = await bulk.parseCsv(csvText, parseOptions);
+      const normalizedRows = sanitizeRowsForAllowedFields(cloneRows(result.rows), allowedFields);
+
+      setRows(normalizedRows);
       setDiagnosticsSnapshot({
-        rows: cloneRows(result.rows),
+        rows: cloneRows(normalizedRows),
         diagnostics: cloneDiagnostics(result.diagnostics)
       });
       if (result.columns.length > 0) {
-        setColumns([...result.columns]);
+        setColumns(constrainColumns(result.columns, allowedFields));
       }
 
       options.onParsed?.(result);
       return result;
     },
-    [bulk, options.parseOptions, options.onParsed, mode]
+    [allowedFields, bulk, mode, options.onParsed, options.parseOptions, setRows]
   );
 
   const validate = useCallback(
     async (overrideOptions: Omit<ValidationOptions, 'mode'> = {}) => {
-      const result = await bulk.validate(rows, {
+      const validationOptions = {
         maxRows: 50,
         ...options.validationOptions,
         ...overrideOptions,
         mode
-      });
+      };
 
-      setRows(cloneRows(result.rows));
+      if (allowedFields) {
+        validationOptions.allowedFields = Array.from(allowedFields);
+      }
+
+      const rowsForValidation = sanitizeRowsForAllowedFields(rows, allowedFields);
+      const result = await bulk.validate(rowsForValidation, validationOptions);
+      const normalizedRows = sanitizeRowsForAllowedFields(cloneRows(result.rows), allowedFields);
+
+      setRows(normalizedRows);
       setDiagnosticsSnapshot({
-        rows: cloneRows(result.rows),
+        rows: cloneRows(normalizedRows),
         diagnostics: cloneDiagnostics(result.diagnostics)
       });
       options.onValidated?.(result);
       return result;
     },
-    [bulk, rows, options.validationOptions, options.onValidated, mode]
+    [allowedFields, bulk, mode, options.onValidated, options.validationOptions, rows, setRows]
   );
 
   const applySuggestion = useCallback(
     (rowIndex: number, field: string, suggestion: string) => {
+      if (allowedFields && !allowedFields.has(field)) {
+        return;
+      }
+
       setRowsState((currentRows) => {
         if (rowIndex < 0 || rowIndex >= currentRows.length) {
           return currentRows;
@@ -521,11 +665,11 @@ export function useBulkCsvAttestUI(attest: AttestClient, options: BulkCsvAttestU
             return row;
           }
 
-          return attest.applySuggestion(row, field, suggestion);
+          return sanitizeRowForAllowedFields(attest.applySuggestion(row, field, suggestion), allowedFields);
         });
       });
     },
-    [attest]
+    [allowedFields, attest]
   );
 
   const applyDiagnosticSuggestion = useCallback(
@@ -583,18 +727,28 @@ export function useBulkCsvAttestUI(attest: AttestClient, options: BulkCsvAttestU
       }
 
       if (validateBeforeSubmit && !isPreparedRows(submitRows)) {
-        const validation = await validate(params.validationOptions);
+        const validationOptions = {
+          ...params.validationOptions
+        };
+
+        if (allowedFields) {
+          validationOptions.allowedFields = Array.from(allowedFields);
+        }
+
+        const validation = await validate(validationOptions);
         if (!validation.valid) {
           throw new AttestValidationError('Bulk attestation rows failed validation.', validation.diagnostics);
         }
         submitRows = validation.validRows;
+      } else if (!isPreparedRows(submitRows)) {
+        submitRows = sanitizeRowsForAllowedFields(submitRows, allowedFields);
       }
 
       const result = await bulk.submit(submitRows, activeWalletAdapter);
       options.onSubmitted?.(result);
       return result;
     },
-    [options.walletAdapter, options.onSubmitted, rows, bulk, validate]
+    [allowedFields, bulk, options.onSubmitted, options.walletAdapter, rows, validate]
   );
 
   const reset = useCallback(
@@ -604,12 +758,17 @@ export function useBulkCsvAttestUI(attest: AttestClient, options: BulkCsvAttestU
       setDiagnosticsSnapshot(null);
 
       if (Array.isArray(options.initialColumns) && options.initialColumns.length > 0) {
-        setColumns([...options.initialColumns]);
+        setColumns(constrainColumns(options.initialColumns, allowedFields));
       } else {
-        setColumns(getVisibleFields(mode, options.includeFields, options.excludeFields).map((field) => field.id));
+        setColumns(
+          constrainColumns(
+            getVisibleFields(mode, options.includeFields, options.excludeFields).map((field) => field.id),
+            allowedFields
+          )
+        );
       }
     },
-    [options.initialRows, options.initialColumns, options.includeFields, options.excludeFields, mode]
+    [allowedFields, mode, options.excludeFields, options.includeFields, options.initialColumns, options.initialRows]
   );
 
   return useMemo(

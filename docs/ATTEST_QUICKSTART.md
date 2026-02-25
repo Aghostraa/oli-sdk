@@ -1,95 +1,123 @@
+---
+title: "Attestation Quickstart"
+description: "Get onchain attestations working in minutes."
+---
+
 # Attestation Quickstart
 
-## Drop-In (Frontend-like)
+## 1. Prerequisites
+
+Initialize `OLIClient` and create a wallet adapter before calling any write APIs.
 
 ```ts
 import { OLIClient } from '@openlabels/oli-sdk';
-import { createDynamicWalletAdapter } from '@openlabels/oli-sdk/attest';
 
-const oli = new OLIClient();
-await oli.init();
-
-const adapter = createDynamicWalletAdapter(primaryWallet);
-
-const parsed = await oli.attest.parseCsv(csvText);
-const validation = await oli.attest.validateBulk(parsed.rows, { mode: 'simpleProfile' });
-
-if (!validation.valid) {
-  console.log(validation.diagnostics);
-  return;
-}
-
-const tx = await oli.attest.submitBulkOnchain(validation.validRows, adapter);
-console.log(tx.status, tx.txHash, tx.uids);
+const oli = new OLIClient({ api: { apiKey: process.env.OLI_API_KEY! } });
+await oli.init(); // fetches latest tag definitions and value sets
 ```
 
-## Single Form Flow
+```ts
+import { createDynamicWalletAdapter } from '@openlabels/oli-sdk/attest';
+
+const adapter = createDynamicWalletAdapter(primaryWallet, {
+  paymasterUrl: process.env.NEXT_PUBLIC_COINBASE_PAYMASTER_URL
+});
+```
+
+See [Dynamic Wallet Integration](ATTEST_DYNAMIC_WALLET.md) for adapter setup details and sponsorship behavior. See [Environment Variables](ATTEST_ENV.md) for paymaster configuration.
+
+## 2. Single Attestation
+
+Build an input object, prepare it, then submit onchain.
 
 ```ts
 const input = {
-  chain_id: 'eip155:1',
+  chain_id: 'eip155:8453',
   address: '0x1234567890123456789012345678901234567890',
   usage_category: 'dex',
-  owner_project: 'growthepie'
+  owner_project: 'uniswap'
 };
 
-const prepared = await oli.attest.prepareSingleAttestation(input, {
-  mode: 'simpleProfile'
-});
+// Optionally validate first
+const validation = await oli.attest.validateSingle(input, { mode: 'simpleProfile' });
+if (!validation.valid) {
+  console.log(validation.diagnostics.errors);
+  return;
+}
 
-const tx = await oli.attest.submitSingleOnchain(prepared, adapter);
+// Prepare (encodes the attestation data)
+const prepared = await oli.attest.prepareSingleAttestation(input, { mode: 'simpleProfile' });
+
+// Submit
+const result = await oli.attest.submitSingleOnchain(prepared, adapter);
+console.log(result.status, result.txHash, result.sponsored);
 ```
 
-## Headless Usage Example
+## 3. Bulk CSV Attestation
 
-Use this when you do not want React hooks/UI components.
+Parse a CSV string, validate all rows, then submit the valid ones onchain.
 
 ```ts
-import { OLIClient } from '@openlabels/oli-sdk';
+// Parse CSV text (handles header aliasing, CAIP normalization, etc.)
+const parsed = await oli.attest.parseCsv(csvText);
 
-const oli = new OLIClient();
-await oli.init();
+// Validate all rows
+const validation = await oli.attest.validateBulk(parsed.rows, { mode: 'advancedProfile' });
 
-const rows = [
-  {
-    chain_id: 'eip155:1',
-    address: '0x1234567890123456789012345678901234567890',
-    usage_category: 'defi'
-  }
-];
+// Check for blocking errors before submitting
+if (validation.diagnostics.errors.length > 0) {
+  console.log('Errors to fix:', validation.diagnostics.errors);
+  return;
+}
 
-const validation = await oli.attest.validateBulk(rows, {
-  mode: 'advancedProfile',
-  projects: [
-    { owner_project: 'growthepie', display_name: 'Growthepie' }
-  ]
-});
+// Submit valid rows (max 50 per call)
+const result = await oli.attest.submitBulkOnchain(validation.validRows, adapter);
+console.log(result.status, result.uids);
+```
+
+`validation.validRows` contains only rows that passed all checks. `validation.invalidRows` is an array of row indices that had errors.
+
+## 4. Applying Suggestions
+
+The validation step emits structured suggestions for fields like `usage_category`, `owner_project`, and `chain_id`. Use `applySuggestion` to apply them before submitting.
+
+```ts
+const validation = await oli.attest.validateBulk(parsed.rows, { mode: 'advancedProfile' });
+let rows = [...parsed.rows];
 
 for (const suggestion of validation.diagnostics.suggestions) {
   if (suggestion.field && suggestion.suggestions?.length) {
-    rows[suggestion.row ?? 0] = oli.attest.applySuggestion(
-      rows[suggestion.row ?? 0],
+    const rowIndex = suggestion.row ?? 0;
+    rows[rowIndex] = oli.attest.applySuggestion(
+      rows[rowIndex],
       suggestion.field,
       suggestion.suggestions[0]
     );
   }
 }
+
+// Re-validate after applying suggestions
+const final = await oli.attest.validateBulk(rows, { mode: 'advancedProfile' });
+const result = await oli.attest.submitBulkOnchain(final.validRows, adapter);
 ```
 
-## Configurable UI Modules
+## 5. React Hooks
+
+For React applications, the `attest-ui` subpath provides controller hooks that wire up state, validation, and submission into a single API surface.
 
 ```ts
 import { useSingleAttestUI, useBulkCsvAttestUI } from '@openlabels/oli-sdk/attest-ui';
 
-const single = useSingleAttestUI(oli.attest, {
+const singleController = useSingleAttestUI(oli.attest, {
   mode: 'simpleProfile',
-  walletAdapter
+  walletAdapter: adapter,
+  onSubmitted: (result) => console.log(result.txHash)
 });
 
-const bulk = useBulkCsvAttestUI(oli.attest, {
+const bulkController = useBulkCsvAttestUI(oli.attest, {
   mode: 'advancedProfile',
-  walletAdapter
+  walletAdapter: adapter
 });
 ```
 
-Use the controller APIs directly, or render with `SingleAttestForm` / `BulkCsvTable` and override styles/renderers.
+See [Attest UI Components](ATTEST_UI_COMPONENTS.md) for the full hook API, render-prop modules, and unstyled primitive components.

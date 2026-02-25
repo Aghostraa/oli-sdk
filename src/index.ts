@@ -28,6 +28,21 @@ export {
   getProjectValidation,
   validateProjectId
 } from './projects';
+export {
+  applyProjectPatchToPayload,
+  buildProjectPayloadFromDraft,
+  createGitHubPullRequestClient,
+  DEFAULT_CONTRIBUTION_REPOSITORIES,
+  ensureProjectFilePath,
+  GitHubPullRequestClient,
+  inferLogoExtension,
+  normalizeProjectSlug,
+  parseProjectYaml,
+  reorderProjectPayload,
+  serializeProjectYaml,
+  submitProjectContribution,
+  validateProjectPayload
+} from './contributions';
 
 // Types - Common
 export type {

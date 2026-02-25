@@ -1,7 +1,14 @@
 import { defineConfig } from 'tsup';
 
 export default defineConfig({
-  entry: ['src/index.ts', 'src/react.ts', 'src/attest.entry.ts', 'src/projects.entry.ts', 'src/attest-ui.entry.ts'],
+  entry: [
+    'src/index.ts',
+    'src/react.ts',
+    'src/attest.entry.ts',
+    'src/projects.entry.ts',
+    'src/attest-ui.entry.ts',
+    'src/contributions.entry.ts'
+  ],
   format: ['cjs', 'esm'],
   dts: true,
   clean: true,

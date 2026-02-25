@@ -93,6 +93,29 @@ test.describe('attest core + validation', () => {
     assert.ok(result.diagnostics.errors.some((entry) => entry.code === 'BULK_ROW_LIMIT_EXCEEDED'));
   });
 
+  test('validateBulk with allowedFields ignores validation for fields outside scope', async () => {
+    const oli = new OLIClient();
+
+    const result = await oli.attest.validateBulk(
+      [
+        {
+          chain_id: 'eip155:1',
+          address: '0x1234567890123456789012345678901234567890',
+          deployment_tx: 'bad-hash'
+        }
+      ],
+      {
+        mode: 'advancedProfile',
+        projects: PROJECTS,
+        allowedFields: ['chain_id', 'address', 'contract_name', 'usage_category', 'owner_project']
+      }
+    );
+
+    assert.equal(result.valid, true);
+    assert.ok(!result.diagnostics.errors.some((entry) => entry.code === 'TX_HASH_INVALID'));
+    assert.equal(result.rows[0].deployment_tx, undefined);
+  });
+
   test('parseCsv supports fuzzy headers, chain normalization, and CAIP-10 parsing', async () => {
     const oli = new OLIClient();
 
@@ -114,5 +137,23 @@ test.describe('attest core + validation', () => {
     assert.equal(parsed.rows[0].paymaster_category, 'verifying');
     assert.ok(parsed.diagnostics.conversions.some((entry) => entry.code === 'CHAIN_NORMALIZED'));
     assert.ok(parsed.diagnostics.errors.some((entry) => entry.code === 'PROJECT_INVALID'));
+  });
+
+  test('parseCsv with allowedFields excludes non-allowed mapped columns', async () => {
+    const oli = new OLIClient();
+
+    const csv = [
+      'chain_id,address,contract_name,usage_category,owner_project,deployment_tx',
+      'eip155:1,0x1234567890123456789012345678901234567890,Demo,dex,uniswap,invalid'
+    ].join('\n');
+
+    const parsed = await oli.attest.parseCsv(csv, {
+      mode: 'advancedProfile',
+      projects: PROJECTS,
+      allowedFields: ['chain_id', 'address', 'contract_name', 'usage_category', 'owner_project']
+    });
+
+    assert.deepEqual(parsed.columns, ['chain_id', 'address', 'contract_name', 'usage_category', 'owner_project']);
+    assert.equal(parsed.rows[0].deployment_tx, undefined);
   });
 });
