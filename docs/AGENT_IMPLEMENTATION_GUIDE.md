@@ -225,7 +225,7 @@ Create this file:
 export { CHAINS, CHAIN_OPTIONS, CHAIN_ALIASES } from './attest/core/chains';
 export type { ChainMetadata } from './attest/core/chains';
 
-// Chain ID conversion/normalisation (from validation layer)
+// Chain ID conversion/normalization (from validation layer)
 export { convertChainId } from './attest/validation/chain';
 
 // CAIP-10 utilities
@@ -1003,13 +1003,13 @@ function _testBulkController(c: BulkCsvAttestUIController): void {
 const _firstChain: ChainMetadata = CHAINS[0];
 const _caip10Parts: Caip10Parts | null = parseCaip10('eip155:8453:0x0000000000000000000000000000000000000000');
 const _builtCaip10: string = buildCaip10('eip155:8453', '0x0000000000000000000000000000000000000000');
-const _normalised: string | null = normalizeChainId('eip155:8453');
+const _normalized: string | null = normalizeChainId('eip155:8453');
 const _converted: string = convertChainId('base');
 const _checksummed: string = toChecksumAddress('0x0000000000000000000000000000000000000000');
 const _categoryAlias: string = convertCategoryAlias('dex');
 const _validCategoryId: boolean = (VALID_CATEGORY_IDS as string[]).includes('dex');
 
-void _firstChain; void _caip10Parts; void _builtCaip10; void _normalised;
+void _firstChain; void _caip10Parts; void _builtCaip10; void _normalized;
 void _converted; void _checksummed; void _categoryAlias; void _validCategoryId;
 void _rootCode; void _validationCode;
 

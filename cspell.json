@@ -77,7 +77,10 @@
     "Docusaurus",
     "Vitepress",
     "VitePress",
-    "Nextra"
+    "Nextra",
+    "checksummed",
+    "normalization",
+    "normalized"
   ],
   "ignorePaths": [
     "node_modules/**",

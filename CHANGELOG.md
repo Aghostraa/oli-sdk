@@ -6,7 +6,7 @@ All notable changes to this project are documented here. The format follows [Kee
 ## [Unreleased]
 
 
-## [0.1.2] - 2025-12-20
+## [0.2.0] - 2026-02-27
 
 ### Added
 - **`/validation` subpath** — Exposes all field-level validators (`validateAddressForChain`, `validateContractName`, `validateTxHash`, `validateURL`, `validateBoolean`, etc.) plus the new `DIAGNOSTIC_CODES` constant object for consumers who need to match on diagnostic `.code` strings without hardcoding literals.
@@ -65,7 +65,7 @@ This is the first release of the refreshed `@openlabels/oli-sdk` package and ser
 - Documentation disclaimer describing how the public label pool, `getBestLabelForAddress`, and `getValidLabelsForAddress` should be treated until the upcoming trust algorithms land.
 
 
-[Unreleased]: https://github.com/openlabelsinitiative/oli-sdk/compare/v0.1.2...HEAD
-[0.1.2]: https://github.com/openlabelsinitiative/oli-sdk/compare/v0.1.1...v0.1.2
+[Unreleased]: https://github.com/openlabelsinitiative/oli-sdk/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/openlabelsinitiative/oli-sdk/compare/v0.1.1...v0.2.0
 [0.1.1]: https://github.com/openlabelsinitiative/oli-sdk/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/openlabelsinitiative/oli-sdk/releases/tag/v0.1.0
