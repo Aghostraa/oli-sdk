@@ -4,6 +4,11 @@ function isHexAddress(address: string): boolean {
   return /^0x[a-fA-F0-9]{40}$/.test(address);
 }
 
+/**
+ * Return `true` when `address` is a valid EVM hex address (checksummed, all-lowercase,
+ * or all-uppercase).
+ * @param address - Address string to test (must be `0x`-prefixed, 42 chars).
+ */
 export function isValidEvmAddress(address: string): boolean {
   if (!isHexAddress(address)) {
     return false;
@@ -35,6 +40,12 @@ export function isValidEvmAddress(address: string): boolean {
   return true;
 }
 
+/**
+ * Convert an EVM address to its EIP-55 checksummed form.
+ * @param address - `0x`-prefixed 40-hex-char address (any casing).
+ * @returns EIP-55 checksummed address.
+ * @throws `Error` when the input is not a valid EVM address format.
+ */
 export function toChecksumAddress(address: string): string {
   if (!isHexAddress(address)) {
     throw new Error('Invalid EVM address');

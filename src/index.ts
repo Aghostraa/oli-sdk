@@ -149,6 +149,8 @@ export type {
   BulkOnchainSubmitResult
 } from './attest';
 export { AttestValidationError } from './attest';
+export { DIAGNOSTIC_CODES } from './attest/validation/diagnostics';
+export type { DiagnosticCode } from './attest/validation/diagnostics';
 
 export type {
   ProjectSimilarityField,

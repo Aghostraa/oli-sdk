@@ -35,10 +35,21 @@
       "types": "./dist/react.d.ts",
       "import": "./dist/react.mjs",
       "require": "./dist/react.js"
+    },
+    "./validation": {
+      "types": "./dist/validation.entry.d.ts",
+      "import": "./dist/validation.entry.mjs",
+      "require": "./dist/validation.entry.js"
+    },
+    "./chains": {
+      "types": "./dist/chains.entry.d.ts",
+      "import": "./dist/chains.entry.mjs",
+      "require": "./dist/chains.entry.js"
     }
   },
   "files": [
-    "dist"
+    "dist",
+    "src"
   ],
   "scripts": {
     "build": "tsup",
@@ -47,6 +58,7 @@
     "test": "tsx --test tests/**/*.test.ts",
     "test:dynamic": "tsx --test tests/attest.dynamic-e2e.test.ts",
     "test:live": "tsx tests/live-address.test.ts",
+    "test:types": "tsc --noEmit -p tests/consumer/tsconfig.json",
     "prepublishOnly": "npm run build"
   },
   "keywords": [

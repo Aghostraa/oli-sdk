@@ -181,6 +181,34 @@ export function inferLogoExtension(
   return 'png';
 }
 
+/**
+ * Submit a project YAML (and optional logo) to the OSS Directory via GitHub
+ * pull requests.
+ *
+ * Performs the following steps:
+ * 1. Validates the YAML payload (unless `input.validateYaml` is `false`).
+ * 2. Serialises the payload to YAML text.
+ * 3. Opens (or updates) a pull request for the YAML file in the projects repo.
+ * 4. If `input.logo` is provided, opens (or updates) a second pull request for
+ *    the logo file in the logos repo.
+ *
+ * @param input - Contribution parameters including auth, YAML payload, and optional logo.
+ * @param dependencies - Internal dependency overrides (useful for testing).
+ * @returns URLs and metadata for the opened pull requests.
+ * @throws `Error` when YAML validation fails (lists up to 12 issues in the message).
+ *
+ * @example
+ * ```ts
+ * const result = await submitProjectContribution({
+ *   auth: { token: process.env.GITHUB_TOKEN },
+ *   yaml: {
+ *     mode: 'add',
+ *     payload: { version: 7, name: 'my-project', display_name: 'My Project' }
+ *   }
+ * });
+ * console.log(result.yaml.pullRequest.pullRequestUrl);
+ * ```
+ */
 export async function submitProjectContribution(
   input: SubmitProjectContributionInput,
   dependencies: SubmitProjectContributionDependencies = {}

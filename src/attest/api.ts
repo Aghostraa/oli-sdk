@@ -25,7 +25,27 @@ import { parseCsv as parseCsvValidation } from './validation/csv';
 import { validateBulk as validateBulkRows, validateSingle as validateSingleRow } from './validation/validate';
 import { submitBulkOnchain as submitBulkTransport, submitSingleOnchain as submitSingleTransport } from './transport/submit';
 
+/**
+ * Client for building, validating, and submitting OLI attestations onchain.
+ *
+ * Typically accessed via `OLIClient.attest` or instantiated directly when
+ * the read-only REST features are not needed.
+ *
+ * @example
+ * ```ts
+ * const attest = new AttestClient();
+ * const validation = await attest.validateSingle({ chain_id: 'eip155:8453', address: '0x...' });
+ * ```
+ */
 export class AttestClient {
+  /**
+   * @param options.fetchProjects - Optional async function that returns the project list used
+   *   for project-ID validation. Falls back to the public OLI projects feed.
+   * @param options.defaultAttestationNetwork - EVM chain ID of the EAS network to attest on.
+   *   Defaults to Base (8453).
+   * @param options.defaultRecipient - Default attestation recipient address. Defaults to the
+   *   OLI canonical recipient address.
+   */
   constructor(
     private readonly options: {
       fetchProjects?: () => Promise<ProjectRecord[]>;
@@ -34,6 +54,14 @@ export class AttestClient {
     } = {}
   ) {}
 
+  /**
+   * Parse a raw CSV string into attestation rows, applying chain-ID normalisation
+   * and column header mapping.
+   *
+   * @param csvText - Raw CSV text (with header row).
+   * @param options - Parse options such as mode and allowed fields.
+   * @returns Parsed rows, inferred columns, a header map, and diagnostics.
+   */
   async parseCsv(csvText: string, options: ParseCsvOptions = {}) {
     return parseCsvValidation(csvText, {
       ...options,
@@ -41,6 +69,13 @@ export class AttestClient {
     });
   }
 
+  /**
+   * Validate a single attestation row.
+   *
+   * @param input - Row data containing at minimum `chain_id` and `address`.
+   * @param options - Validation options including mode and project list.
+   * @returns Validation result with the normalised row and diagnostics.
+   */
   async validateSingle(input: AttestationRowInput, options: ValidationOptions = {}): Promise<SingleValidationResult> {
     return validateSingleRow(input, {
       ...options,
@@ -48,6 +83,13 @@ export class AttestClient {
     });
   }
 
+  /**
+   * Validate an array of attestation rows (up to 50).
+   *
+   * @param rows - Array of row data objects.
+   * @param options - Validation options including mode and max-row limit.
+   * @returns Bulk validation result with per-row diagnostics and a `validRows` subset.
+   */
   async validateBulk(rows: AttestationRowInput[], options: ValidationOptions = {}): Promise<BulkValidationResult> {
     return validateBulkRows(rows, {
       ...options,
@@ -56,6 +98,16 @@ export class AttestClient {
     });
   }
 
+  /**
+   * Apply a suggestion value to a field on a row, returning the updated row.
+   * When `field` is `'address'` and `suggestion` is a CAIP-10 string, the
+   * `chain_id` is also updated automatically.
+   *
+   * @param row - Source row to update.
+   * @param field - Field ID to apply the suggestion to.
+   * @param suggestion - Suggested value to set.
+   * @returns New row object with the suggestion applied.
+   */
   applySuggestion(row: AttestationRowInput, field: string, suggestion: string): AttestationRowInput {
     const nextRow: AttestationRowInput = {
       ...row,
@@ -75,6 +127,15 @@ export class AttestClient {
     return nextRow;
   }
 
+  /**
+   * Validate and encode a single attestation row, producing a `PreparedAttestation`
+   * ready for onchain submission.
+   *
+   * @param input - Row data to prepare.
+   * @param options - Prepare options; `validate: false` skips the pre-encode validation.
+   * @returns Fully encoded attestation including ABI-encoded data and network config.
+   * @throws `AttestValidationError` when validation fails (unless `validate: false`).
+   */
   async prepareSingleAttestation(input: AttestationRowInput, options: PrepareSingleOptions = {}): Promise<PreparedAttestation> {
     const mode = resolveModeProfile(options.mode);
     const validation = await this.validateSingle(input, {
@@ -124,6 +185,13 @@ export class AttestClient {
     };
   }
 
+  /**
+   * Submit a single prepared attestation onchain via the given wallet adapter.
+   *
+   * @param prepared - Attestation produced by `prepareSingleAttestation`.
+   * @param walletAdapter - Wallet adapter that signs and broadcasts the transaction.
+   * @returns Onchain result including transaction hash and attestation UIDs.
+   */
   async submitSingleOnchain(
     prepared: PreparedAttestation,
     walletAdapter: OnchainWalletAdapter
@@ -139,6 +207,15 @@ export class AttestClient {
     });
   }
 
+  /**
+   * Validate, prepare, and submit up to 50 attestation rows in a single
+   * `multiAttest` transaction.
+   *
+   * @param rows - Raw row data or already-prepared attestations.
+   * @param walletAdapter - Wallet adapter that signs and broadcasts the transaction.
+   * @returns Bulk onchain result with per-row status and UIDs.
+   * @throws `AttestValidationError` when any row fails validation.
+   */
   async submitBulkOnchain(
     rows: AttestationRowInput[] | PreparedAttestation[],
     walletAdapter: OnchainWalletAdapter

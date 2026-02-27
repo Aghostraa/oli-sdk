@@ -462,6 +462,27 @@ class DynamicWalletAdapter implements OnchainWalletAdapter {
   }
 }
 
+/**
+ * Create an `OnchainWalletAdapter` from a Dynamic.xyz `primaryWallet` object.
+ *
+ * Supports both standard `writeContract` flows and EIP-5792 `wallet_sendCalls`
+ * for sponsored (fee-less) transactions via Coinbase Paymaster on Base networks.
+ *
+ * @param primaryWallet - The `useDynamicContext().primaryWallet` value from `@dynamic-labs/sdk-react-core`.
+ * @param options.paymasterUrl - Override the Coinbase Paymaster URL used for sponsored calls.
+ *   Falls back to the `OLI_COINBASE_PAYMASTER_URL` environment variable.
+ * @returns An `OnchainWalletAdapter` compatible with all `AttestClient` submission methods.
+ *
+ * @example
+ * ```ts
+ * import { createDynamicWalletAdapter } from '@openlabels/oli-sdk';
+ * import { useDynamicContext } from '@dynamic-labs/sdk-react-core';
+ *
+ * const { primaryWallet } = useDynamicContext();
+ * const adapter = createDynamicWalletAdapter(primaryWallet);
+ * await attest.submitSingleOnchain(prepared, adapter);
+ * ```
+ */
 export function createDynamicWalletAdapter(
   primaryWallet: DynamicPrimaryWalletLike,
   options: { paymasterUrl?: string } = {}

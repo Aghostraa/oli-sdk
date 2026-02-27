@@ -183,16 +183,46 @@ export interface ProjectContributionRepositories {
   logos: GitHubRepositoryRef;
 }
 
+/**
+ * Input for `submitProjectContribution`. Describes all parameters needed to
+ * open a GitHub pull request that adds or updates an OSS Directory project entry.
+ */
 export interface SubmitProjectContributionInput {
+  /** GitHub authentication config (personal-access token or token factory). */
   auth: GitHubTokenConfig;
+  /** YAML project payload to submit (add or edit mode). */
   yaml: ProjectYamlContribution;
+  /** Optional project logo to submit alongside the YAML. */
   logo?: ProjectLogoContribution;
+  /**
+   * Override the default target repositories.
+   * Defaults to `opensource-observer/oss-directory` (YAML) and
+   * `growthepie/gtp-dna` (logos).
+   */
   repositories?: Partial<ProjectContributionRepositories>;
+  /**
+   * GitHub username/org to open the PR from (fork owner).
+   * When omitted, the authenticated user's own account is used.
+   */
   targetOwner?: string;
+  /**
+   * When `true`, automatically fork the upstream repository if the
+   * authenticated user does not already have a fork.
+   */
   autoCreateFork?: boolean;
+  /** Branch name prefix. Defaults to `'oli-sdk/'`. */
   branchPrefix?: string;
+  /**
+   * When `false`, skip YAML payload validation before submission.
+   * Defaults to `true`.
+   */
   validateYaml?: boolean;
+  /** Human-readable label included in the default PR body. */
   actorLabel?: string;
+  /**
+   * Existing project list used for duplicate-name validation.
+   * Pass the result of `fetchProjects()` for accurate deduplication.
+   */
   existingProjects?: ProjectYamlPayload[];
 }
 

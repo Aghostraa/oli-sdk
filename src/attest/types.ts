@@ -138,14 +138,47 @@ export interface OnchainTxResult {
   raw?: unknown;
 }
 
+/**
+ * Wallet adapter interface that the attestation pipeline uses to sign and
+ * broadcast transactions. Implement this to integrate any wallet library.
+ *
+ * @example
+ * ```ts
+ * // Use the built-in Dynamic adapter:
+ * const adapter = createDynamicWalletAdapter(primaryWallet);
+ * await attest.submitSingleOnchain(prepared, adapter);
+ * ```
+ */
 export interface OnchainWalletAdapter {
+  /** Human-readable adapter name used in error messages. */
   name?: string;
+  /** Return the currently connected chain ID. */
   getChainId(): Promise<number>;
+  /**
+   * Switch the wallet to the given EVM chain ID.
+   * @param chainId - Target chain ID.
+   */
   switchNetwork(chainId: number): Promise<void>;
+  /**
+   * Return `true` if EIP-5792 fee sponsorship is available for `chainId`.
+   * When absent the pipeline assumes no sponsorship.
+   */
   isSponsorshipSupported?(chainId: number): Promise<boolean>;
+  /**
+   * Submit a single `attest` call to the EAS contract.
+   * @param request - Encoded attestation request.
+   * @param context - Network config and optional paymaster URL.
+   */
   attest(request: OnchainAttestationRequest, context: OnchainSubmitContext): Promise<OnchainTxResult>;
+  /**
+   * Submit a `multiAttest` call to the EAS contract.
+   * @param requests - Array of encoded attestation requests (same schema UID).
+   * @param context - Network config and optional paymaster URL.
+   */
   multiAttest(requests: OnchainAttestationRequest[], context: OnchainSubmitContext): Promise<OnchainTxResult>;
+  /** Sponsored variant of `attest` (uses EIP-5792 `wallet_sendCalls`). */
   sponsoredAttest?(request: OnchainAttestationRequest, context: OnchainSubmitContext): Promise<OnchainTxResult>;
+  /** Sponsored variant of `multiAttest` (uses EIP-5792 `wallet_sendCalls`). */
   sponsoredMultiAttest?(requests: OnchainAttestationRequest[], context: OnchainSubmitContext): Promise<OnchainTxResult>;
 }
 

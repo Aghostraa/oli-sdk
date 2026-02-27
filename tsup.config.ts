@@ -7,10 +7,12 @@ export default defineConfig({
     'src/attest.entry.ts',
     'src/projects.entry.ts',
     'src/attest-ui.entry.ts',
-    'src/contributions.entry.ts'
+    'src/contributions.entry.ts',
+    'src/validation.entry.ts',
+    'src/chains.entry.ts'
   ],
   format: ['cjs', 'esm'],
-  dts: true,
+  dts: { resolve: true },
   clean: true,
   sourcemap: true,
   splitting: false,

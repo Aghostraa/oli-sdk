@@ -162,8 +162,8 @@ export function SingleAttestForm(props: SingleAttestFormProps): unknown {
 
   const fields = props.controller.fields.map((field) => {
     const value = toTextValue(props.controller.row[field.id]);
-    const error = getFieldError(props.controller.diagnostics, 0, field.id);
-    const suggestions = collectSuggestions(props.controller.diagnostics, 0, field.id);
+    const error = getFieldError(props.controller.diagnostics.all, 0, field.id);
+    const suggestions = collectSuggestions(props.controller.diagnostics.all, 0, field.id);
 
     const context: SingleAttestFieldRenderContext = {
       field,
@@ -172,7 +172,7 @@ export function SingleAttestForm(props: SingleAttestFormProps): unknown {
       error,
       suggestions,
       onChange: (nextValue: string) => props.controller.setField(field.id, nextValue),
-      onApplySuggestion: (suggestion: string) => props.controller.applySuggestion(field.id, suggestion)
+      onApplySuggestion: (suggestion: string) => props.controller.diagnostics.applySuggestion(field.id, suggestion)
     };
 
     const customField = props.renderField?.(context);
@@ -187,7 +187,7 @@ export function SingleAttestForm(props: SingleAttestFormProps): unknown {
           key: `${field.id}-${suggestion}`,
           type: 'button',
           className: props.classNames?.suggestionButton,
-          onClick: () => props.controller.applySuggestion(field.id, suggestion)
+          onClick: () => props.controller.diagnostics.applySuggestion(field.id, suggestion)
         },
         suggestion
       )
@@ -245,24 +245,24 @@ export function SingleAttestForm(props: SingleAttestFormProps): unknown {
         {
           type: 'button',
           className: props.classNames?.validateButton,
-          disabled: props.controller.validation.loading,
+          disabled: props.controller.validation.isRunning,
           onClick: () => {
-            void props.controller.validate();
+            void props.controller.validation.run();
           }
         },
-        props.controller.validation.loading ? labels.validationLoading : labels.validate
+        props.controller.validation.isRunning ? labels.validationLoading : labels.validate
       ),
       createElement(
         'button',
         {
           type: 'button',
           className: props.classNames?.submitButton,
-          disabled: props.controller.submission.loading,
+          disabled: props.controller.submission.isSubmitting,
           onClick: () => {
-            void props.controller.submit(props.walletAdapter);
+            void props.controller.submission.submit(props.walletAdapter);
           }
         },
-        props.controller.submission.loading ? labels.submitLoading : labels.submit
+        props.controller.submission.isSubmitting ? labels.submitLoading : labels.submit
       )
     ),
     statusMessage ? createElement('div', { className: props.classNames?.status }, statusMessage) : null
@@ -313,14 +313,14 @@ export function BulkCsvTable(props: BulkCsvTableProps): unknown {
 
   const [csvText, setCsvText] = useState('');
 
-  const rows = props.controller.rows.length > 0 ? props.controller.rows : [{}];
-  const columns = props.controller.columns.length > 0 ? props.controller.columns : ['chain_id', 'address'];
+  const rows = props.controller.queue.rows.length > 0 ? props.controller.queue.rows : [{}];
+  const columns = props.controller.queue.columns.length > 0 ? props.controller.queue.columns : ['chain_id', 'address'];
 
   const tableRows = rows.map((row, rowIndex) => {
     const cells = columns.map((field) => {
       const value = toTextValue(row[field]);
-      const fieldDiagnostics = props.controller.getFieldDiagnostics(rowIndex, field);
-      const error = props.controller.getFieldError(rowIndex, field)?.message;
+      const fieldDiagnostics = props.controller.diagnostics.getField(rowIndex, field);
+      const error = props.controller.diagnostics.getFieldError(rowIndex, field)?.message;
       const suggestions = collectSuggestionsFromScopedDiagnostics(fieldDiagnostics);
 
       const context: BulkCsvCellRenderContext = {
@@ -329,8 +329,8 @@ export function BulkCsvTable(props: BulkCsvTableProps): unknown {
         value,
         error,
         suggestions,
-        onChange: (nextValue: string) => props.controller.setCell(rowIndex, field, nextValue),
-        onApplySuggestion: (suggestion: string) => props.controller.applySuggestion(rowIndex, field, suggestion)
+        onChange: (nextValue: string) => props.controller.queue.setCell(rowIndex, field, nextValue),
+        onApplySuggestion: (suggestion: string) => props.controller.diagnostics.applySuggestion(rowIndex, field, suggestion)
       };
 
       const customCell = props.renderCell?.(context);
@@ -349,7 +349,7 @@ export function BulkCsvTable(props: BulkCsvTableProps): unknown {
           'button',
           {
             type: 'button',
-            onClick: () => props.controller.removeRow(rowIndex)
+            onClick: () => props.controller.queue.removeRow(rowIndex)
           },
           labels.removeRow
         )
@@ -382,12 +382,12 @@ export function BulkCsvTable(props: BulkCsvTableProps): unknown {
         {
           type: 'button',
           className: props.classNames?.parseButton,
-          disabled: props.controller.csv.loading,
+          disabled: props.controller.csv.isLoading,
           onClick: () => {
-            void props.controller.parseCsvText(csvText);
+            void props.controller.csv.parse(csvText);
           }
         },
-        props.controller.csv.loading ? labels.validationLoading : labels.parseCsv
+        props.controller.csv.isLoading ? labels.validationLoading : labels.parseCsv
       )
     ),
     createElement(
@@ -417,8 +417,8 @@ export function BulkCsvTable(props: BulkCsvTableProps): unknown {
         {
           type: 'button',
           className: props.classNames?.addRowButton,
-          disabled: props.controller.rows.length >= 50,
-          onClick: () => props.controller.addRow({})
+          disabled: props.controller.queue.rows.length >= 50,
+          onClick: () => props.controller.queue.addRow({})
         },
         labels.addRow
       ),
@@ -427,24 +427,24 @@ export function BulkCsvTable(props: BulkCsvTableProps): unknown {
         {
           type: 'button',
           className: props.classNames?.validateButton,
-          disabled: props.controller.validation.loading,
+          disabled: props.controller.validation.isRunning,
           onClick: () => {
-            void props.controller.validate();
+            void props.controller.validation.run();
           }
         },
-        props.controller.validation.loading ? labels.validationLoading : labels.validate
+        props.controller.validation.isRunning ? labels.validationLoading : labels.validate
       ),
       createElement(
         'button',
         {
           type: 'button',
           className: props.classNames?.submitButton,
-          disabled: props.controller.submission.loading,
+          disabled: props.controller.submission.isSubmitting,
           onClick: () => {
-            void props.controller.submit({ walletAdapter: props.walletAdapter });
+            void props.controller.submission.submit({ walletAdapter: props.walletAdapter });
           }
         },
-        props.controller.submission.loading ? labels.submitLoading : labels.submit
+        props.controller.submission.isSubmitting ? labels.submitLoading : labels.submit
       )
     ),
     statusMessage ? createElement('div', { className: props.classNames?.status }, statusMessage) : null

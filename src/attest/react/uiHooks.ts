@@ -485,19 +485,29 @@ export function useSingleAttestUI(attest: AttestClient, options: SingleAttestUIO
   return useMemo(
     () => ({
       mode,
+      setMode,
       row,
       fields,
-      diagnostics,
-      validation: single.validation,
-      submission: single.submission,
-      setMode,
       setRow,
       setField,
-      applySuggestion,
-      applyDiagnosticSuggestion,
-      validate,
-      prepare,
-      submit,
+      diagnostics: {
+        all: diagnostics,
+        applySuggestion,
+        applyFromDiagnostic: applyDiagnosticSuggestion
+      },
+      validation: {
+        run: validate,
+        result: single.validation.result,
+        isRunning: single.validation.loading,
+        error: single.validation.error
+      },
+      submission: {
+        prepare,
+        submit,
+        result: single.submission.result,
+        isSubmitting: single.submission.loading,
+        error: single.submission.error
+      },
       reset
     }),
     [
@@ -505,8 +515,12 @@ export function useSingleAttestUI(attest: AttestClient, options: SingleAttestUIO
       row,
       fields,
       diagnostics,
-      single.validation,
-      single.submission,
+      single.validation.result,
+      single.validation.loading,
+      single.validation.error,
+      single.submission.result,
+      single.submission.loading,
+      single.submission.error,
       setField,
       applySuggestion,
       applyDiagnosticSuggestion,
@@ -774,26 +788,42 @@ export function useBulkCsvAttestUI(attest: AttestClient, options: BulkCsvAttestU
   return useMemo(
     () => ({
       mode,
-      rows,
-      columns,
-      diagnostics,
-      csv: bulk.csv,
-      validation: bulk.validation,
-      submission: bulk.submission,
       setMode,
-      setRows,
-      setColumns,
-      setCell,
-      addRow,
-      removeRow,
-      parseCsvText,
-      validate,
-      getRowDiagnostics,
-      getFieldDiagnostics,
-      getFieldError,
-      applySuggestion,
-      applyDiagnosticSuggestion,
-      submit,
+      queue: {
+        rows,
+        columns,
+        setRows,
+        setColumns,
+        setCell,
+        addRow,
+        removeRow
+      },
+      diagnostics: {
+        all: diagnostics,
+        getRow: getRowDiagnostics,
+        getField: getFieldDiagnostics,
+        getFieldError,
+        applySuggestion,
+        applyFromDiagnostic: applyDiagnosticSuggestion
+      },
+      csv: {
+        parse: parseCsvText,
+        result: bulk.csv.result,
+        isLoading: bulk.csv.loading,
+        error: bulk.csv.error
+      },
+      validation: {
+        run: validate,
+        result: bulk.validation.result,
+        isRunning: bulk.validation.loading,
+        error: bulk.validation.error
+      },
+      submission: {
+        submit,
+        result: bulk.submission.result,
+        isSubmitting: bulk.submission.loading,
+        error: bulk.submission.error
+      },
       reset
     }),
     [
@@ -801,9 +831,17 @@ export function useBulkCsvAttestUI(attest: AttestClient, options: BulkCsvAttestU
       rows,
       columns,
       diagnostics,
-      bulk.csv,
-      bulk.validation,
-      bulk.submission,
+      bulk.csv.result,
+      bulk.csv.loading,
+      bulk.csv.error,
+      bulk.validation.result,
+      bulk.validation.loading,
+      bulk.validation.error,
+      bulk.submission.result,
+      bulk.submission.loading,
+      bulk.submission.error,
+      setRows,
+      setColumns,
       setCell,
       addRow,
       removeRow,
